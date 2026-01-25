@@ -11,6 +11,17 @@ function connectWebSocket() {
 
   ws.onmessage = (e) => {
     console.log("WS:", e.data);
+
+    // Parse the JSON array
+    let devices;
+    try {
+      devices = JSON.parse(e.data);
+    } catch (err) {
+      console.error("Invalid JSON:", e.data);
+      return;
+    }
+
+    updateDeviceList(devices);
   };
 
   ws.onerror = (err) => {

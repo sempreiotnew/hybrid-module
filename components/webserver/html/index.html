@@ -155,6 +155,36 @@
       .title-loading.hidden {
         visibility: hidden;
       }
+
+      .status-badge {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        display: inline-block;
+      }
+
+      .status-badge.paired {
+        background: #48bb78;
+        box-shadow: 0 0 0 3px rgba(72, 187, 120, 0.2);
+      }
+
+      .status-badge.unpaired {
+        background: #cbd5e0;
+      }
+
+      .device-paired {
+        background: #f0fff4;
+        border-left: 3px solid #48bb78;
+      }
+
+      .device-unpaired {
+        background: white;
+      }
+
+      .network-info {
+        flex: 1;
+        font-size: 14px;
+      }
     </style>
   </head>
   <body>

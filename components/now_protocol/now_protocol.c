@@ -4,6 +4,7 @@
 #include "esp_log.h"
 #include "esp_now.h"
 #include "esp_wifi.h"
+#include "now_protocol_json.h"
 #include "now_protocol_t.h"
 #include "websocket.h"
 
@@ -25,6 +26,8 @@ void update_or_add_device(const esp_now_recv_info_t *info,
       devices[i].last_seen_ms = now;
       devices[i].last_type = frame->type;
       devices[i].last_seq = frame->seq;
+      strncpy(devices[i].mac_str, mac_str, sizeof(devices[i].mac_str) - 1);
+      devices[i].mac_str[sizeof(devices[i].mac_str) - 1] = '\0';
       return;
     }
   }
@@ -36,6 +39,11 @@ void update_or_add_device(const esp_now_recv_info_t *info,
     devices[device_count].last_seen_ms = now;
     devices[device_count].last_type = frame->type;
     devices[device_count].last_seq = frame->seq;
+    strncpy(devices[device_count].mac_str, mac_str,
+            sizeof(devices[device_count].mac_str) - 1);
+    devices[device_count].mac_str[sizeof(devices[device_count].mac_str) - 1] =
+        '\0'; // ensure null-termination
+
     device_count++;
   } else {
     ESP_LOGW(TAG, "Device table full, cannot add %s", mac_str);
@@ -152,10 +160,8 @@ void espnow_rx_cb(const esp_now_recv_info_t *info, const uint8_t *data,
   case MSG_WHOIS_ACK:
 
     char name[] = "MyDevice";
+    char *json = get_devices_info_cjson(devices);
 
-    char json[128]; // make sure it's big enough for your content
-    snprintf(json, sizeof(json), "{\"mac\":\"%s\",\"name\":\"%s\",\"rssi\":%d}",
-             mac_str, name, info->rx_ctrl->rssi);
     ws_send_text(json);
     ESP_LOGI(TAG, "[RECEIVED] %s from: %s ", msg_type_to_str(frame->ack_type),
              mac_str);
