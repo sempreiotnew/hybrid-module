@@ -1,8 +1,9 @@
 let hasNowData = false;
 let isScanningNow = false;
+let ws;
 
 function connectWebSocket() {
-  let ws = new WebSocket("ws://" + location.host + "/ws");
+  ws = new WebSocket("ws://" + location.host + "/ws");
 
   ws.onopen = () => {
     console.log("WebSocket connected");
