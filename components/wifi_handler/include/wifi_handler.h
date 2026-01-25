@@ -1,0 +1,1 @@
+void init_wifi_ap_sta();
