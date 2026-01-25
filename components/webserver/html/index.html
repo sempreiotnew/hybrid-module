@@ -21,11 +21,161 @@
         padding: 20px;
         color: #333;
       }
+
+      .container {
+        max-width: 600px;
+        margin: 0 auto;
+      }
+
+      .card {
+        background: white;
+        border-radius: 12px;
+        padding: 24px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      }
+      .card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        cursor: pointer;
+        user-select: none;
+        touch-action: manipulation;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      .title-container {
+        display: flex;
+        align-items: center;
+        flex: 1;
+      }
+
+      .toggle-icon {
+        display: inline-block;
+        margin-left: 8px;
+        transition: transform 0.3s;
+        font-size: 18px;
+        color: #718096;
+      }
+
+      .toggle-icon.collapsed {
+        transform: rotate(-90deg);
+      }
+
+      .card-content {
+        max-height: 1000px;
+        overflow: hidden;
+        transition: max-height 0.3s ease-out;
+      }
+
+      .card-content.collapsed {
+        max-height: 0;
+      }
+
+      .now-mac {
+        color: #4a5568;
+        font-family: monospace;
+        font-size: 13px;
+      }
+
+      .now-last-msg {
+        color: #718096;
+        font-size: 12px;
+        margin-top: 4px;
+      }
+
+      .pair-btn {
+        background: #48bb78;
+        color: white;
+        border: none;
+        padding: 6px 16px;
+        border-radius: 6px;
+        font-size: 13px;
+        cursor: pointer;
+        transition: background 0.2s;
+        font-weight: 500;
+        touch-action: manipulation;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      .pair-btn:hover {
+        background: #38a169;
+      }
+
+      .pair-btn:active {
+        transform: scale(0.95);
+        background: #2f855a;
+      }
+
+      .unpair-btn {
+        background: #f56565;
+        color: white;
+        border: none;
+        padding: 6px 16px;
+        border-radius: 6px;
+        font-size: 13px;
+        cursor: pointer;
+        transition: background 0.2s;
+        font-weight: 500;
+        touch-action: manipulation;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      .unpair-btn:hover {
+        background: #e53e3e;
+      }
+
+      .unpair-btn:active {
+        transform: scale(0.95);
+        background: #c53030;
+      }
+
+      /* LOADING */
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+      .title-loading {
+        display: inline-block;
+        border: 2px solid #e2e8f0;
+        border-top: 2px solid #667eea;
+        border-radius: 50%;
+        width: 16px;
+        height: 16px;
+        animation: spin 1s linear infinite;
+        margin-right: 8px;
+        vertical-align: middle;
+        flex-shrink: 0;
+      }
+
+      .title-loading.hidden {
+        visibility: hidden;
+      }
     </style>
   </head>
   <body>
-    <h2>HELLO WORLD</h2>
+    <div class="container">
+      <div class="card">
+        <div class="card-header">
+          <div class="title-container">
+            <span id="nowLoader" class="title-loading hidden"></span>
+            <h2 style="margin: 0">ESP-NOW Devices</h2>
+            <span id="nowToggle" class="toggle-icon">▼</span>
+          </div>
+        </div>
+        <div id="nowContent" class="card-content">
+          <ul id="listNow">
+            <li class="empty-state">Scanning devices...</li>
+          </ul>
+        </div>
+      </div>
+    </div>
 
+    <script src="now.js"></script>
     <script src="index.js"></script>
   </body>
 </html>

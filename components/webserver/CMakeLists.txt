@@ -5,4 +5,5 @@ idf_component_register(
     EMBED_FILES 
         "html/index.html"
         "html/index.js"
+        "html/now.js"
 )

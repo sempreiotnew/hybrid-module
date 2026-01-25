@@ -10,6 +10,8 @@ extern const uint8_t index_html_start[] asm("_binary_index_html_start");
 extern const uint8_t index_html_end[] asm("_binary_index_html_end");
 extern const uint8_t index_js_start[] asm("_binary_index_js_start");
 extern const uint8_t index_js_end[] asm("_binary_index_js_end");
+extern const uint8_t now_js_start[] asm("_binary_now_js_start");
+extern const uint8_t now_js_end[] asm("_binary_now_js_end");
 
 /* ---------- ROOT HTML---------- */
 static esp_err_t root_get_handler(httpd_req_t *req) {
@@ -22,6 +24,13 @@ static esp_err_t js_get_handler(httpd_req_t *req) {
   httpd_resp_set_type(req, "application/javascript");
   size_t len = index_js_end - index_js_start;
   return httpd_resp_send(req, (const char *)index_js_start, len);
+}
+
+/* ---------- NOW JS---------- */
+static esp_err_t now_js_get_handler(httpd_req_t *req) {
+  httpd_resp_set_type(req, "application/javascript");
+  size_t len = now_js_end - now_js_start;
+  return httpd_resp_send(req, (const char *)now_js_start, len);
 }
 
 httpd_handle_t init_web_server() {
@@ -40,6 +49,12 @@ httpd_handle_t init_web_server() {
       .handler = js_get_handler,
   };
 
+  httpd_uri_t now_js = {
+      .uri = "/now.js",
+      .method = HTTP_GET,
+      .handler = now_js_get_handler,
+  };
+
   httpd_uri_t ws_uri = {.uri = "/ws",
                         .method = HTTP_GET,
                         .handler = ws_handler,
@@ -48,6 +63,7 @@ httpd_handle_t init_web_server() {
   if (httpd_start(&local_http_server, &config) == ESP_OK) {
     httpd_register_uri_handler(local_http_server, &root);
     httpd_register_uri_handler(local_http_server, &js);
+    httpd_register_uri_handler(local_http_server, &now_js);
     httpd_register_uri_handler(local_http_server, &ws_uri);
 
     local_ws_server = local_http_server;

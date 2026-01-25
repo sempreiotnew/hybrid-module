@@ -1,3 +1,6 @@
+let hasNowData = false;
+let isScanningNow = false;
+
 function connectWebSocket() {
   let ws = new WebSocket("ws://" + location.host + "/ws");
 
@@ -19,4 +22,9 @@ function connectWebSocket() {
 }
 
 // Make sure DOM is ready
-window.addEventListener("load", connectWebSocket);
+window.addEventListener("DOMContentLoaded", () => {
+  connectWebSocket();
+  setTimeout(() => {
+    scan_now();
+  }, 1000);
+});
