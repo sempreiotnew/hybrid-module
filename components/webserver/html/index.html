@@ -72,6 +72,34 @@
         max-height: 0;
       }
 
+      ul {
+        list-style: none;
+      }
+
+      li {
+        padding: 12px;
+        border-bottom: 1px solid #e2e8f0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        transition: background 0.2s;
+        cursor: pointer;
+        touch-action: manipulation;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      li:last-child {
+        border-bottom: none;
+      }
+
+      li:hover {
+        background: #f7fafc;
+      }
+
+      li:active {
+        background: #e2e8f0;
+      }
+
       .now-mac {
         color: #4a5568;
         font-family: monospace;

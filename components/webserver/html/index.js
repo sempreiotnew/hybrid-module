@@ -12,16 +12,49 @@ function connectWebSocket() {
   ws.onmessage = (e) => {
     console.log("WS:", e.data);
 
-    // Parse the JSON array
-    let devices;
+    let msg;
+
     try {
-      devices = JSON.parse(e.data);
+      msg = JSON.parse(e.data);
     } catch (err) {
       console.error("Invalid JSON:", e.data);
       return;
     }
 
-    updateDeviceList(devices);
+    // Check if "action" exists
+    if (!msg.action) {
+      console.error("No action field in message:", msg);
+      return;
+    }
+    switch (msg.action) {
+      case "now_nearby_devices_info":
+        if (Array.isArray(msg.payload)) {
+          updateDeviceList(msg.payload);
+        } else {
+          console.error("Invalid payload for update_devices:", msg.payload);
+        }
+        break;
+
+      case "remove_device":
+        if (msg.payload && msg.payload.mac) {
+          // removeDevice(msg.payload.mac);
+        } else {
+          console.error("Invalid payload for remove_device:", msg.payload);
+        }
+        break;
+
+      case "update_config":
+        if (msg.payload) {
+          // updateConfig(msg.payload);
+        } else {
+          console.error("Invalid payload for update_config:", msg.payload);
+        }
+        break;
+
+      default:
+        console.warn("Unknown action:", msg.action);
+        break;
+    }
   };
 
   ws.onerror = (err) => {

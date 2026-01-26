@@ -13,7 +13,7 @@ static const char *TAG = "MAIN";
 
 void whois_task(void *arg) {
   while (1) {
-    send_to_mac(MSG_WHOIS, MSG_WHOIS, broadcast_mac);
+    send_to_mac(MSG_BEACON, MSG_BEACON, broadcast_mac);
     vTaskDelay(pdMS_TO_TICKS(3000));
   }
 };
@@ -28,4 +28,5 @@ void app_main(void) {
   init_esp_now();
 
   xTaskCreate(whois_task, "whois_task", 4096, NULL, 5, NULL);
+  xTaskCreate(remove_stale_devices_task, "cleanup_task", 4096, NULL, 5, NULL);
 }

@@ -4,28 +4,41 @@
 static const char *TAG = "now_protocol_json.c";
 
 char *get_devices_info_cjson(device_info_t devices[]) {
-  // Create a JSON array
-  cJSON *root_array = cJSON_CreateArray();
-  if (!root_array) {
+  // Top-level object
+  cJSON *root_obj = cJSON_CreateObject();
+  if (!root_obj)
+    return NULL;
+
+  // Add action
+  cJSON_AddStringToObject(root_obj, "action", "now_nearby_devices_info");
+
+  // Create payload array
+  cJSON *payload_array = cJSON_CreateArray();
+  if (!payload_array) {
+    cJSON_Delete(root_obj);
     return NULL;
   }
 
   for (int i = 0; i < device_count; i++) {
     cJSON *dev_obj = cJSON_CreateObject();
-    if (!dev_obj) {
+    if (!dev_obj)
       continue;
-    }
 
     cJSON_AddStringToObject(dev_obj, "mac", devices[i].mac_str);
     cJSON_AddStringToObject(dev_obj, "name", devices[i].name);
     cJSON_AddNumberToObject(dev_obj, "rssi", devices[i].rssi);
 
-    cJSON_AddItemToArray(root_array, dev_obj);
+    cJSON_AddItemToArray(payload_array, dev_obj);
   }
 
-  char *json_str = cJSON_PrintUnformatted(root_array);
+  // Attach array to root
+  cJSON_AddItemToObject(root_obj, "payload", payload_array);
 
-  cJSON_Delete(root_array);
+  // Convert to string
+  char *json_str = cJSON_PrintUnformatted(root_obj);
 
-  return json_str;
+  // Free JSON object (json_str is independent memory)
+  cJSON_Delete(root_obj);
+
+  return json_str; // caller must free(json_str)
 }

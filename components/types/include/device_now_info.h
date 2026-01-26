@@ -4,7 +4,14 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#define MAX_DEVICES 32
+#define MAX_MAC_ADDR 6
+#define MAX_NAME_LEN 16
+#define MAX_DEVICES 10
+
+typedef struct {
+  uint8_t mac[16];
+  char name[30]; // optional friendly name
+} paired_device_t;
 
 typedef struct {
   uint8_t mac[6];
@@ -15,7 +22,8 @@ typedef struct {
   uint32_t last_seen_ms; // timestamp in milliseconds
   uint8_t last_type;     // msg_type_t
   uint16_t last_seq;     // sequence number
-  bool paired;
+  paired_device_t parents[MAX_DEVICES];
+  paired_device_t children[MAX_DEVICES];
 } device_info_t;
 
 extern device_info_t devices[MAX_DEVICES];

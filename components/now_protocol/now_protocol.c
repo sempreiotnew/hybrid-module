@@ -52,10 +52,8 @@ void update_or_add_device(const esp_now_recv_info_t *info,
 
 static const char *msg_type_to_str(uint8_t type) {
   switch ((msg_type_t)type) {
-  case MSG_WHOIS:
-    return "MSG_WHOIS";
-  case MSG_WHOIS_ACK:
-    return "MSG_WHOIS_ACK";
+  case MSG_BEACON:
+    return "MSG_BEACON";
   case MSG_PAIR_REQ:
     return "MSG_PAIR_REQ";
   case MSG_PAIR_ACK:
@@ -152,19 +150,19 @@ void espnow_rx_cb(const esp_now_recv_info_t *info, const uint8_t *data,
   update_or_add_device(info, frame);
 
   switch (frame->type) {
-  case MSG_WHOIS:
+  case MSG_BEACON:
     ESP_LOGI(TAG, "[RECEIVED] %s from: %s ", msg_type_to_str(frame->ack_type),
              mac_str);
-    send_to_mac(MSG_WHOIS_ACK, MSG_WHOIS_ACK, info->src_addr);
-    break;
-  case MSG_WHOIS_ACK:
-
-    char name[] = "MyDevice";
+    // send_to_mac(MSG_WHOIS_ACK, MSG_WHOIS_ACK, info->src_addr);
     char *json = get_devices_info_cjson(devices);
 
     ws_send_text(json);
-    ESP_LOGI(TAG, "[RECEIVED] %s from: %s ", msg_type_to_str(frame->ack_type),
-             mac_str);
+    break;
+    // case MSG_WHOIS_ACK:
+
+    //       ESP_LOGI(TAG, "[RECEIVED] %s from: %s ",
+    //       msg_type_to_str(frame->ack_type),
+    //            mac_str);
     break;
   case MSG_PAIR_REQ:
     break;
@@ -197,4 +195,38 @@ void init_esp_now() {
   // Register callback for receiving messages
   esp_now_register_recv_cb(espnow_rx_cb);
   espnow_add_peer_by_mac(broadcast_mac);
+}
+
+void remove_stale_devices_task(void *arg) {
+  const uint32_t timeout_ms = 10000;
+
+  while (1) {
+    bool updated = false;
+    uint32_t now = xTaskGetTickCount() * portTICK_PERIOD_MS;
+
+    for (int i = 0; i < device_count;) {
+      if (now - devices[i].last_seen_ms > timeout_ms) {
+        ESP_LOGI(TAG, "Device %s being removed", devices[i].mac_str);
+
+        for (int j = i; j < device_count - 1; j++) {
+          devices[j] = devices[j + 1];
+        }
+
+        device_count--;
+        updated = true;
+      } else {
+        i++;
+      }
+    }
+
+    // ✅ Send AFTER the list is fully updated
+    if (updated) {
+      char *json = get_devices_info_cjson(devices);
+      ws_send_text(json);
+      free(json);
+    }
+
+    // ✅ ALWAYS yield to the scheduler
+    vTaskDelay(pdMS_TO_TICKS(1000));
+  }
 }

@@ -3,7 +3,7 @@
 #define ESPNOW_PROTO_VERSION 0x01
 
 typedef enum {
-  MSG_WHOIS = 0x01,
+  MSG_BEACON = 0x01,
   MSG_WHOIS_ACK = 0x02,
 
   MSG_PAIR_REQ = 0x03,
