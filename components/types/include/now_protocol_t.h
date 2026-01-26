@@ -4,15 +4,14 @@
 
 typedef enum {
   MSG_BEACON = 0x01,
-  MSG_WHOIS_ACK = 0x02,
 
-  MSG_PAIR_REQ = 0x03,
-  MSG_PAIR_ACK = 0x04,
+  MSG_PAIR_REQ = 0x02,
+  MSG_PAIR_ACK = 0x03,
 
-  MSG_PAIRED = 0x05,
+  MSG_PAIRED = 0x04,
 
-  MSG_PAYLOAD = 0x06,
-  MSG_PAYLOAD_ACK = 0x07,
+  MSG_PAYLOAD = 0x05,
+  MSG_PAYLOAD_ACK = 0x06,
 } msg_type_t;
 
 typedef struct __attribute__((packed)) {

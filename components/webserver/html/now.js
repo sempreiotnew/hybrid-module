@@ -14,6 +14,21 @@ async function scan_now() {
   }
 }
 
+async function pair(mac) {
+  try {
+    const res = await fetch("/api/pair", {
+      method: "POST",
+      body: JSON.stringify({ mac: mac }),
+    });
+
+    if (res.ok) {
+      console.log("Sucessfully paired !");
+    }
+  } catch (e) {
+    console.log(e);
+  }
+}
+
 function updateDeviceList(devices) {
   const ul = document.getElementById("listNow");
   ul.innerHTML = "";
@@ -87,10 +102,12 @@ function updateDeviceList(devices) {
       btn.addEventListener("click", (e) => {
         e.stopPropagation();
         // pair(n.mac);
+        pair(n.mac);
       });
       btn.addEventListener("touchend", (e) => {
         e.preventDefault();
         e.stopPropagation();
+        pair(n.mac);
         // pair(n.mac);
       });
 

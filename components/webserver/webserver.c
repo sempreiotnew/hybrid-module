@@ -1,8 +1,12 @@
 
+#include "constants.h"
 #include "esp_http_server.h"
 #include "esp_log.h"
 #include "global_http_server.h"
 #include "global_ws_server.h"
+#include "now_protocol.h"
+#include "now_protocol_t.h"
+#include "webserver_json.h"
 #include "websocket.h"
 
 static const char *TAG = "webserver.c";
@@ -33,6 +37,24 @@ static esp_err_t now_js_get_handler(httpd_req_t *req) {
   return httpd_resp_send(req, (const char *)now_js_start, len);
 }
 
+static esp_err_t pair_post_handler(httpd_req_t *req) {
+  char content[256] = {0};
+
+  int received = httpd_req_recv(req, content, sizeof(content) - 1);
+  if (received <= 0)
+    return ESP_FAIL;
+
+  uint8_t mac[6];
+  if (!parse_pair_post_content(content, mac)) {
+    return ESP_FAIL;
+  }
+
+  // send_pair_request(mac, 10);
+  send_to_mac(MSG_PAIR_REQ, MSG_PAIR_REQ, broadcast_mac);
+  httpd_resp_send(req, NULL, 0);
+  return ESP_OK;
+}
+
 httpd_handle_t init_web_server() {
   httpd_config_t config = HTTPD_DEFAULT_CONFIG();
   config.max_uri_handlers = 16;
@@ -55,6 +77,12 @@ httpd_handle_t init_web_server() {
       .handler = now_js_get_handler,
   };
 
+  httpd_uri_t pair = {
+      .uri = "/api/pair",
+      .method = HTTP_POST,
+      .handler = pair_post_handler,
+  };
+
   httpd_uri_t ws_uri = {.uri = "/ws",
                         .method = HTTP_GET,
                         .handler = ws_handler,
@@ -65,6 +93,7 @@ httpd_handle_t init_web_server() {
     httpd_register_uri_handler(local_http_server, &js);
     httpd_register_uri_handler(local_http_server, &now_js);
     httpd_register_uri_handler(local_http_server, &ws_uri);
+    httpd_register_uri_handler(local_http_server, &pair);
 
     local_ws_server = local_http_server;
 
