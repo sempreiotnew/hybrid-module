@@ -37,6 +37,7 @@ static esp_err_t now_js_get_handler(httpd_req_t *req) {
   return httpd_resp_send(req, (const char *)now_js_start, len);
 }
 
+/* ---------- NOW PAIR---------- */
 static esp_err_t pair_post_handler(httpd_req_t *req) {
   char content[256] = {0};
 
@@ -49,8 +50,49 @@ static esp_err_t pair_post_handler(httpd_req_t *req) {
     return ESP_FAIL;
   }
 
-  // send_pair_request(mac, 10);
-  send_to_mac(MSG_PAIR_REQ, MSG_PAIR_REQ, broadcast_mac);
+  send_pair_request(mac, 10, false);
+
+  httpd_resp_send(req, NULL, 0);
+  return ESP_OK;
+}
+
+#include <device_now_info.h>
+#include <now_protocol_json.h>
+void mark_device_paired2(const uint8_t *mac, bool paired) {
+  for (int i = 0; i < device_count; i++) {
+    if (memcmp(devices[i].device_data.mac, mac, 6) == 0) {
+      devices[i].paired =
+          paired; // <-- add `bool paired;` to your device struct
+      char mac_str[18];
+      snprintf(mac_str, sizeof(mac_str), "%02X:%02X:%02X:%02X:%02X:%02X",
+               mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+      char *json = get_devices_info_cjson(devices);
+      ws_send_text(json);
+      ESP_LOGI(TAG, "Device marked as paired (runtime only): %s", mac_str);
+      return;
+    }
+  }
+
+  // Device not found, optionally log
+  ESP_LOGW(TAG, "Cannot mark device paired: not found in table");
+}
+/* ---------- NOW UNPAIR---------- */
+static esp_err_t pair_delete_handler(httpd_req_t *req) {
+  char content[256] = {0};
+
+  int received = httpd_req_recv(req, content, sizeof(content) - 1);
+  if (received <= 0)
+    return ESP_FAIL;
+
+  uint8_t mac[6];
+  if (!parse_pair_post_content(content, mac)) {
+    // TODO retornar erro
+    return ESP_FAIL;
+  }
+
+  delete_peer_by_mac(mac);
+  mark_device_paired2(mac, false);
+
   httpd_resp_send(req, NULL, 0);
   return ESP_OK;
 }
@@ -83,6 +125,12 @@ httpd_handle_t init_web_server() {
       .handler = pair_post_handler,
   };
 
+  httpd_uri_t unpair = {
+      .uri = "/api/pair",
+      .method = HTTP_DELETE,
+      .handler = pair_delete_handler,
+  };
+
   httpd_uri_t ws_uri = {.uri = "/ws",
                         .method = HTTP_GET,
                         .handler = ws_handler,
@@ -94,6 +142,7 @@ httpd_handle_t init_web_server() {
     httpd_register_uri_handler(local_http_server, &now_js);
     httpd_register_uri_handler(local_http_server, &ws_uri);
     httpd_register_uri_handler(local_http_server, &pair);
+    httpd_register_uri_handler(local_http_server, &unpair);
 
     local_ws_server = local_http_server;
 

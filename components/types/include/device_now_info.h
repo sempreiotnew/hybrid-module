@@ -20,6 +20,7 @@ typedef struct {
 
 typedef struct {
   device_data_t device_data;
+  bool paired;
   int rssi;
   char last_msg[32];
   uint32_t last_seen_ms; // timestamp in milliseconds

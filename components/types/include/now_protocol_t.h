@@ -20,4 +20,7 @@ typedef struct __attribute__((packed)) {
   uint8_t ack_type; // msg_type_t being ACKed (0 if none)
   uint16_t seq;     // sequence number
   uint8_t src[6];   // sender MAC
+  uint8_t dst[6];
+  char password[10];
+
 } espnow_frame_t;

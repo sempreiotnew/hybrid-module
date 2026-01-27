@@ -29,6 +29,21 @@ async function pair(mac) {
   }
 }
 
+async function unpair(mac) {
+  try {
+    const res = await fetch("/api/pair", {
+      method: "DELETE",
+      body: JSON.stringify({ mac: mac }),
+    });
+
+    if (res.ok) {
+      console.log("Sucessfully unpaired !");
+    }
+  } catch (e) {
+    console.log(e);
+  }
+}
+
 function updateDeviceList(devices) {
   const ul = document.getElementById("listNow");
   ul.innerHTML = "";
@@ -38,8 +53,8 @@ function updateDeviceList(devices) {
     return;
   }
 
-  const paired = devices.filter((n) => pairedDevices.has(n.mac));
-  const unpaired = devices.filter((n) => !pairedDevices.has(n.mac));
+  const paired = devices.filter((n) => n.paired);
+  const unpaired = devices.filter((n) => !n.paired);
 
   // Paired devices
   if (paired.length > 0) {
@@ -65,12 +80,12 @@ function updateDeviceList(devices) {
       const btn = li.querySelector(".unpair-btn");
       btn.addEventListener("click", (e) => {
         e.stopPropagation();
-        // unpair(n.mac);
+        unpair(n.mac);
       });
       btn.addEventListener("touchend", (e) => {
         e.preventDefault();
         e.stopPropagation();
-        // unpair(n.mac);
+        unpair(n.mac);
       });
 
       ul.appendChild(li);
@@ -101,14 +116,12 @@ function updateDeviceList(devices) {
       const btn = li.querySelector(".pair-btn");
       btn.addEventListener("click", (e) => {
         e.stopPropagation();
-        // pair(n.mac);
         pair(n.mac);
       });
       btn.addEventListener("touchend", (e) => {
         e.preventDefault();
         e.stopPropagation();
         pair(n.mac);
-        // pair(n.mac);
       });
 
       ul.appendChild(li);

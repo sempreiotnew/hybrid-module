@@ -27,6 +27,7 @@ char *get_devices_info_cjson(device_info_t devices[]) {
     cJSON_AddStringToObject(dev_obj, "mac", devices[i].device_data.mac_str);
     cJSON_AddStringToObject(dev_obj, "name", devices[i].device_data.name);
     cJSON_AddNumberToObject(dev_obj, "rssi", devices[i].rssi);
+    cJSON_AddBoolToObject(dev_obj, "paired", devices[i].paired);
 
     cJSON_AddItemToArray(payload_array, dev_obj);
   }
