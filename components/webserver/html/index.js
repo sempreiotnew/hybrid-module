@@ -1,6 +1,7 @@
 let hasNowData = false;
 let isScanningNow = false;
 let ws;
+let connectedDeviceMac = null;
 
 function connectWebSocket() {
   ws = new WebSocket("ws://" + location.host + "/ws");
@@ -24,6 +25,17 @@ function connectWebSocket() {
     // Check if "action" exists
     if (!msg.action) {
       console.error("No action field in message:", msg);
+      return;
+    }
+
+    if (!connectedDeviceMac && msg.source) {
+      connectedDeviceMac = msg.source;
+      console.log("Bound UI to device:", connectedDeviceMac);
+    }
+
+    // 🔒 Ignore messages not from this ESP
+    if (msg.source !== connectedDeviceMac) {
+      console.warn("Discarding foreign device update:", msg.source);
       return;
     }
     switch (msg.action) {

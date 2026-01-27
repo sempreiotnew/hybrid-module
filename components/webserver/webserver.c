@@ -57,7 +57,7 @@ static esp_err_t pair_post_handler(httpd_req_t *req) {
 }
 
 #include <device_now_info.h>
-#include <now_protocol_json.h>
+#include <now_protocol_websocket.h>
 void mark_device_paired2(const uint8_t *mac, bool paired) {
   for (int i = 0; i < device_count; i++) {
     if (memcmp(devices[i].device_data.mac, mac, 6) == 0) {
@@ -66,8 +66,8 @@ void mark_device_paired2(const uint8_t *mac, bool paired) {
       char mac_str[18];
       snprintf(mac_str, sizeof(mac_str), "%02X:%02X:%02X:%02X:%02X:%02X",
                mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-      char *json = get_devices_info_cjson(devices);
-      ws_send_text(json);
+      send_to_websocket(devices, "now_nearby_devices_info");
+
       ESP_LOGI(TAG, "Device marked as paired (runtime only): %s", mac_str);
       return;
     }

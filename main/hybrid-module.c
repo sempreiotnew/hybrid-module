@@ -4,6 +4,7 @@
 #include "now_protocol.h"
 #include "nvs_flash.h"
 #include <constants.h>
+#include <mac_handler.h>
 #include <now_protocol_t.h>
 #include <stdio.h>
 #include <webserver.h>
@@ -24,6 +25,7 @@ void app_main(void) {
   ESP_ERROR_CHECK(esp_event_loop_create_default());
 
   init_wifi_ap_sta();
+  init_my_mac();
   init_web_server();
   init_esp_now();
 
