@@ -43,7 +43,10 @@ char *send_to_websocket(device_info_t devices[], const char *action) {
   // Free JSON object (json_str is independent memory)
   cJSON_Delete(root_obj);
 
-  ws_send_text(json_str);
+  if (json_str) {
+    ws_send_text(json_str);
+    free(json_str); // ✅ FIXED: NO MEMORY LEAK
+  }
 
   return json_str; // caller must free(json_str)
 }

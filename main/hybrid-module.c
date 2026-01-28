@@ -14,7 +14,8 @@ static const char *TAG = "MAIN";
 
 void whois_task(void *arg) {
   while (1) {
-    send_to_mac(MSG_BEACON, MSG_BEACON, broadcast_mac);
+    // send_to_mac(MSG_BEACON, MSG_BEACON, broadcast_mac);
+    send_beacon();
     vTaskDelay(pdMS_TO_TICKS(3000));
   }
 };

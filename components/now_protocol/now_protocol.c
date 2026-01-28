@@ -134,25 +134,24 @@ void send_now_msg(const uint8_t *dst_mac, espnow_frame_t data) {
   }
 }
 
-void send_to_mac(uint8_t ack_msg_type, uint8_t acked_type,
-                 const uint8_t *dst_mac) {
-
-  // Make sure peer exists
-  esp_err_t res = espnow_add_peer_by_mac(dst_mac);
-  if (res != ESP_OK && res != ESP_ERR_ESPNOW_EXIST) {
-    ESP_LOGE(TAG, "Cannot send: peer not added");
-    return;
-  }
-
+void send_beacon(void) {
   espnow_frame_t frame = {0};
+
   frame.version = ESPNOW_PROTO_VERSION;
-  frame.type = ack_msg_type;
-  frame.ack_type = acked_type;
+  frame.type = MSG_BEACON;
+  frame.ack_type = MSG_BEACON;
   frame.seq = 0;
 
-  esp_wifi_get_mac(WIFI_IF_STA, frame.src);
+  memcpy(frame.dst, broadcast_mac, 6);
+  memcpy(frame.src, get_chip_id(), 6);
 
-  send_now_msg(dst_mac, frame);
+  esp_err_t res = esp_now_send(broadcast_mac, (uint8_t *)&frame, sizeof(frame));
+
+  if (res == ESP_OK) {
+    ESP_LOGI(TAG, "[SENT] type=MSG_BEACON to FF:FF:FF:FF:FF:FF");
+  } else {
+    ESP_LOGW(TAG, "Failed to send BEACON: %d", res);
+  }
 }
 
 void send_pair_request(const uint8_t *dst_mac, uint16_t seq, bool is_ack) {
@@ -167,11 +166,6 @@ void send_pair_request(const uint8_t *dst_mac, uint16_t seq, bool is_ack) {
   strncpy(frame.password, "1234", sizeof(frame.password) - 1);
 
   esp_wifi_get_mac(WIFI_IF_STA, frame.src);
-
-  // Make sure the device is added as a peer
-  if (!esp_now_is_peer_exist(broadcast_mac)) {
-    espnow_add_peer_by_mac(broadcast_mac);
-  }
 
   send_now_msg(is_ack ? dst_mac : broadcast_mac, frame);
 }
@@ -200,6 +194,7 @@ esp_err_t delete_peer_by_mac(const uint8_t mac_addr[6]) {
 
 void espnow_rx_cb(const esp_now_recv_info_t *info, const uint8_t *data,
                   int len) {
+
   if (len != sizeof(espnow_frame_t)) {
     ESP_LOGW(TAG, "[MESSAGE_REJECTED] Invalid frame size: %d", len);
     return;
@@ -213,16 +208,25 @@ void espnow_rx_cb(const esp_now_recv_info_t *info, const uint8_t *data,
     return;
   }
 
-  // ESP_LOGI(TAG, "%s", get_mac_str(frame->src));
+  bool for_me = memcmp(frame->dst, get_chip_id(), 6) == 0;
+  bool broadcast = memcmp(frame->dst, broadcast_mac, 6) == 0;
+
+  if (for_me || broadcast) {
+    ESP_LOGI(TAG, "SRC : %s", get_mac_str(info->src_addr));
+    ESP_LOGI(TAG, "DEST: %s", get_mac_str(info->des_addr));
+    ESP_LOGI(TAG, "MSG: %s", get_mac_str(frame->dst));
+    update_or_add_device(info, frame);
+  } else {
+    ESP_LOGI(TAG, "NOT FOR ME");
+  }
 
   // ESP_LOGI(TAG, "  ==>  %s", get_mac_str(frame->dst));
+  // update_or_add_device(info, frame);
 
   char mac_str[18];
   snprintf(mac_str, sizeof(mac_str), "%02X:%02X:%02X:%02X:%02X:%02X",
            info->src_addr[0], info->src_addr[1], info->src_addr[2],
            info->src_addr[3], info->src_addr[4], info->src_addr[5]);
-
-  update_or_add_device(info, frame);
 
   switch (frame->type) {
   case MSG_BEACON:
@@ -253,7 +257,7 @@ void espnow_rx_cb(const esp_now_recv_info_t *info, const uint8_t *data,
     break;
   case MSG_PAIR_ACK:
     if (memcmp(frame->dst, get_chip_id(), 6) != 0) {
-      ESP_LOGI(TAG, "PAIR_REQ not for me, ignoring");
+      ESP_LOGI(TAG, "MSG_PAIR_ACK not for me, ignoring");
 
     } else {
       ESP_LOGI(TAG, "[RECEIVED] %s from: %s  ", msg_type_to_str(frame->type),
