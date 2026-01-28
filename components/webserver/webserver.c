@@ -99,8 +99,16 @@ static esp_err_t pair_delete_handler(httpd_req_t *req) {
 
 httpd_handle_t init_web_server() {
   httpd_config_t config = HTTPD_DEFAULT_CONFIG();
-  config.max_uri_handlers = 16;
 
+  config.max_uri_handlers = 16;
+  config.max_open_sockets = 4;
+  config.lru_purge_enable = true;
+
+  config.stack_size = 10240;
+  config.recv_wait_timeout = 10;
+  config.send_wait_timeout = 10;
+
+  config.stack_size = 10240;
   httpd_uri_t root = {
       .uri = "/",
       .method = HTTP_GET,
@@ -131,10 +139,18 @@ httpd_handle_t init_web_server() {
       .handler = pair_delete_handler,
   };
 
-  httpd_uri_t ws_uri = {.uri = "/ws",
-                        .method = HTTP_GET,
-                        .handler = ws_handler,
-                        .is_websocket = true};
+  // httpd_uri_t ws_uri = {.uri = "/ws",
+  //                       .method = HTTP_GET,
+  //                       .handler = ws_handler,
+  //                       .is_websocket = true};
+  httpd_uri_t ws_uri = {
+      .uri = "/ws",
+      .method = HTTP_GET,
+      .handler = ws_handler,
+      .user_ctx = NULL,
+      .is_websocket = true,
+      .handle_ws_control_frames = true,
+  };
 
   if (httpd_start(&local_http_server, &config) == ESP_OK) {
     httpd_register_uri_handler(local_http_server, &root);

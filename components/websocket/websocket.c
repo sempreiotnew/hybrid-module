@@ -1,5 +1,3 @@
-
-
 #include "esp_http_server.h"
 #include "esp_log.h"
 #include <global_http_server.h>
@@ -7,77 +5,76 @@
 #include <string.h>
 
 static const char *TAG = "websocket.c";
-static int g_ws_fd = -1; // client socket fd
+static int g_ws_fd = -1;
 
 /* ---------- FORCE CLOSE ---------- */
 static void ws_force_close(int fd) {
   if (local_ws_server && fd >= 0) {
-    ESP_LOGI(TAG, "Closing old WS fd=%d", fd);
+    ESP_LOGI(TAG, "Closing WS fd=%d", fd);
     httpd_sess_trigger_close(local_ws_server, fd);
     if (fd == g_ws_fd)
       g_ws_fd = -1;
   }
 }
 
+static inline void ws_kill_session(httpd_req_t *req) {
+  int fd = httpd_req_to_sockfd(req);
+
+  ESP_LOGW(TAG, "Killing WS session fd=%d", fd);
+
+  httpd_sess_trigger_close(req->handle, fd);
+
+  if (fd == g_ws_fd)
+    g_ws_fd = -1;
+}
+
 /* ---------- WS HANDLER ---------- */
 esp_err_t ws_handler(httpd_req_t *req) {
   int fd = httpd_req_to_sockfd(req);
 
-  /* WebSocket handshake */
+  /* Handshake */
   if (req->method == HTTP_GET) {
-    /* If there’s already an active client, close it first */
-    if (g_ws_fd >= 0 && g_ws_fd != fd) {
-      ws_force_close(g_ws_fd);
-    }
-
     g_ws_fd = fd;
     local_ws_server = req->handle;
     ESP_LOGI(TAG, "WS connected fd=%d", fd);
     return ESP_OK;
   }
 
-  /* If no active FD, just ignore */
-  if (g_ws_fd < 0)
+  if (fd != g_ws_fd) {
     return ESP_OK;
+  }
 
   httpd_ws_frame_t frame = {0};
-  uint8_t buf[128];
-  frame.payload = buf;
 
-  /* Receive frame safely */
-  esp_err_t ret = httpd_ws_recv_frame(req, &frame, sizeof(buf));
+  /* STEP 1: header only */
+  esp_err_t ret = httpd_ws_recv_frame(req, &frame, 0);
   if (ret != ESP_OK) {
-    ESP_LOGW(TAG, "WS recv failed fd=%d: %s", fd, esp_err_to_name(ret));
-    if (fd == g_ws_fd) {
-      ws_force_close(fd); // close old FD
-    }
-    return ESP_OK; // do not crash HTTP server
+    ws_kill_session(req);
+    return ESP_OK; // NEVER FAIL
   }
 
   if (frame.type == HTTPD_WS_TYPE_CLOSE) {
-    ESP_LOGI(TAG, "WS closed by client fd=%d", fd);
-    if (fd == g_ws_fd)
-      ws_force_close(fd);
+    ws_kill_session(req);
     return ESP_OK;
   }
 
-  if (frame.len == 0 || frame.len > sizeof(buf) - 1) {
-    ESP_LOGW(TAG, "WS invalid length fd=%d len=%d", fd, frame.len);
-    if (fd == g_ws_fd)
-      ws_force_close(fd);
+  if (frame.len == 0 || frame.len > 127) {
+    ws_kill_session(req);
     return ESP_OK;
   }
 
+  uint8_t buf[128];
+  frame.payload = buf;
+
+  /* STEP 2: payload */
   ret = httpd_ws_recv_frame(req, &frame, frame.len);
   if (ret != ESP_OK) {
-    ESP_LOGW(TAG, "WS payload recv failed fd=%d", fd);
-    if (fd == g_ws_fd)
-      ws_force_close(fd);
+    ws_kill_session(req);
     return ESP_OK;
   }
 
   buf[frame.len] = 0;
-  ESP_LOGI(TAG, "WS RX fd=%d: %s", fd, buf);
+  ESP_LOGI(TAG, "WS RX: %s", buf);
 
   return ESP_OK;
 }
@@ -98,7 +95,7 @@ static void ws_send_job(void *arg) {
 
     esp_err_t ret = httpd_ws_send_frame_async(local_ws_server, g_ws_fd, &frame);
     if (ret != ESP_OK) {
-      ESP_LOGW(TAG, "WS send failed, closing fd=%d", g_ws_fd);
+      ESP_LOGW(TAG, "WS send failed fd=%d", g_ws_fd);
       ws_force_close(g_ws_fd);
     }
   }
