@@ -1,26 +1,24 @@
 
-#include "constants.h"
-#include "device_now_info.h"
 #include "esp_log.h"
 #include "esp_now.h"
 #include "esp_wifi.h"
-#include "now_protocol_t.h"
-#include "now_protocol_websocket.h"
+#include <constants.h>
+#include <device_now_info.h>
 #include <mac_handler.h>
+#include <now_protocol_t.h>
+#include <now_protocol_websocket.h>
+#include <util.h>
 
 static const char *TAG = "now_protocol.c";
 
-void mark_device_paired(const uint8_t *mac, bool paired) {
+void set_device_state(const uint8_t *mac, bool paired) {
   for (int i = 0; i < device_count; i++) {
     if (memcmp(devices[i].device_data.mac, mac, 6) == 0) {
-      devices[i].paired =
-          paired; // <-- add `bool paired;` to your device struct
-      char mac_str[18];
-      snprintf(mac_str, sizeof(mac_str), "%02X:%02X:%02X:%02X:%02X:%02X",
-               mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+
+      devices[i].paired = paired;
       send_to_websocket(devices, "now_nearby_devices_info");
       ESP_LOGI(TAG, "Device marked as %s (runtime only): %s",
-               paired ? "PAIRED" : "UNPAIRED", mac_str);
+               paired ? "PAIRED" : "UNPAIRED", get_mac_str(mac));
       return;
     }
   }
@@ -32,7 +30,6 @@ esp_err_t espnow_add_peer_by_mac(const uint8_t *mac) {
   if (!mac)
     return ESP_ERR_INVALID_ARG;
 
-  // Check if peer already exists
   if (esp_now_is_peer_exist(mac)) {
     return ESP_ERR_ESPNOW_EXIST; // already added
   }
@@ -41,29 +38,23 @@ esp_err_t espnow_add_peer_by_mac(const uint8_t *mac) {
 
   memcpy(peer.peer_addr, mac, 6);
 
-  peer.channel = 0;         // use current Wi-Fi channel
-  peer.ifidx = WIFI_IF_STA; // interface (AP)
-  peer.encrypt = false;     // no encryption
+  peer.channel = 0; // use current Wi-Fi channel
+  peer.ifidx = WIFI_IF_STA;
+  peer.encrypt = false;
 
   esp_err_t res = esp_now_add_peer(&peer);
   if (res != ESP_OK) {
-    ESP_LOGW("MAIN", "Failed to add peer %02X:%02X:%02X:%02X:%02X:%02X, err=%d",
-             mac[0], mac[1], mac[2], mac[3], mac[4], mac[5], res);
+    ESP_LOGW("MAIN", "Failed to add peer %s, err=%d", get_mac_str(mac), res);
 
   } else {
-
-    ESP_LOGI("MAIN", "Peer added: %02X:%02X:%02X:%02X:%02X:%02X", mac[0],
-             mac[1], mac[2], mac[3], mac[4], mac[5]);
+    ESP_LOGI("MAIN", "Peer added: %s", get_mac_str(mac));
   }
 
   return res;
 }
 void update_or_add_device(const esp_now_recv_info_t *info,
                           const espnow_frame_t *frame) {
-  char mac_str[18];
-  snprintf(mac_str, sizeof(mac_str), "%02X:%02X:%02X:%02X:%02X:%02X",
-           info->src_addr[0], info->src_addr[1], info->src_addr[2],
-           info->src_addr[3], info->src_addr[4], info->src_addr[5]);
+  char *mac_str = get_mac_str(info->src_addr);
 
   uint32_t now = xTaskGetTickCount() * portTICK_PERIOD_MS;
 
@@ -104,36 +95,14 @@ void update_or_add_device(const esp_now_recv_info_t *info,
   }
 }
 
-static const char *msg_type_to_str(uint8_t type) {
-  switch ((msg_type_t)type) {
-  case MSG_BEACON:
-    return "MSG_BEACON";
-  case MSG_PAIR_REQ:
-    return "MSG_PAIR_REQ";
-  case MSG_PAIR_ACK:
-    return "MSG_PAIR_ACK";
-  case MSG_UNPAIR_REQ:
-    return "MSG_UNPAIR_REQ";
-  case MSG_UNPAIR_ACK:
-    return "MSG_UNPAIR_ACK";
-  case MSG_PAYLOAD:
-    return "MSG_PAYLOAD";
-  case MSG_PAYLOAD_ACK:
-    return "MSG_PAYLOAD_ACK";
-  default:
-    return "MSG_UNKNOWN";
-  }
-}
-
 void send_now_msg(const uint8_t *dst_mac, espnow_frame_t data) {
   esp_err_t res = esp_now_send(dst_mac, (uint8_t *)&data, sizeof(data));
   if (res == ESP_OK) {
-    ESP_LOGI(TAG, "[SENT] type=%s seq=%u to %02X:%02X:%02X:%02X:%02X:%02X",
-             msg_type_to_str(data.type), data.seq, dst_mac[0], dst_mac[1],
-             dst_mac[2], dst_mac[3], dst_mac[4], dst_mac[5]);
+    ESP_LOGI(TAG, "[SENT] type=%s seq=%u to %s", msg_type_to_str(data.type),
+             data.seq, get_mac_str(dst_mac));
 
   } else {
-    ESP_LOGW(TAG, "Failed to send msg %d", res);
+    ESP_LOGW(TAG, "Failed to send msg %d to %s", res, get_mac_str(dst_mac));
   }
 }
 
@@ -151,7 +120,8 @@ void send_beacon(void) {
   esp_err_t res = esp_now_send(broadcast_mac, (uint8_t *)&frame, sizeof(frame));
 
   if (res == ESP_OK) {
-    ESP_LOGI(TAG, "[SENT] type=MSG_BEACON to FF:FF:FF:FF:FF:FF");
+    ESP_LOGI(TAG, "[SENT] type=%s to FF:FF:FF:FF:FF:FF",
+             msg_type_to_str(frame.type));
   } else {
     ESP_LOGW(TAG, "Failed to send BEACON: %d", res);
   }
@@ -173,6 +143,10 @@ void send_pair_request(const uint8_t *dst_mac, uint16_t seq, bool is_ack) {
   send_now_msg(is_ack ? dst_mac : broadcast_mac, frame);
 }
 
+void send_pair_ack(const uint8_t *dst_mac) {
+  send_pair_request(dst_mac, 10, true);
+}
+
 void send_unpair_request(const uint8_t *dst_mac, uint16_t seq, bool is_ack) {
 
   espnow_frame_t frame = {0};
@@ -189,6 +163,10 @@ void send_unpair_request(const uint8_t *dst_mac, uint16_t seq, bool is_ack) {
   send_now_msg(dst_mac, frame);
 }
 
+void send_unpair_ack(const uint8_t *dst_mac) {
+  send_unpair_request(dst_mac, 10, true);
+}
+
 esp_err_t delete_peer_by_mac(const uint8_t mac_addr[6]) {
   if (!mac_addr) {
     ESP_LOGE(TAG, "MAC address is NULL");
@@ -197,10 +175,7 @@ esp_err_t delete_peer_by_mac(const uint8_t mac_addr[6]) {
 
   esp_err_t ret = esp_now_del_peer(mac_addr);
   if (ret == ESP_OK) {
-    char mac_str[18];
-    snprintf(mac_str, sizeof(mac_str), "%02X:%02X:%02X:%02X:%02X:%02X",
-             mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3], mac_addr[4],
-             mac_addr[5]);
+    char *mac_str = get_mac_str(mac_addr);
     ESP_LOGI(TAG, "Peer deleted successfully: %s", mac_str);
   } else if (ret == ESP_ERR_ESPNOW_NOT_FOUND) {
     ESP_LOGW(TAG, "Peer not found in list");
@@ -239,13 +214,7 @@ void espnow_rx_cb(const esp_now_recv_info_t *info, const uint8_t *data,
     ESP_LOGI(TAG, "NOT FOR ME");
   }
 
-  // ESP_LOGI(TAG, "  ==>  %s", get_mac_str(frame->dst));
-  // update_or_add_device(info, frame);
-
-  char mac_str[18];
-  snprintf(mac_str, sizeof(mac_str), "%02X:%02X:%02X:%02X:%02X:%02X",
-           info->src_addr[0], info->src_addr[1], info->src_addr[2],
-           info->src_addr[3], info->src_addr[4], info->src_addr[5]);
+  char *mac_str = get_mac_str(info->src_addr);
 
   switch (frame->type) {
   case MSG_BEACON:
@@ -266,8 +235,8 @@ void espnow_rx_cb(const esp_now_recv_info_t *info, const uint8_t *data,
       if (strcmp(frame->password, "1234") == 0) {
         ESP_LOGI(TAG, "AUTHORIZED!!");
         espnow_add_peer_by_mac(info->src_addr);
-        send_pair_request(info->src_addr, 10, true);
-        mark_device_paired(info->src_addr, true);
+        send_pair_ack(info->src_addr);
+        set_device_state(info->src_addr, true);
       } else {
         ESP_LOGW(TAG, "NOT AUTHORIZED!!");
       }
@@ -282,21 +251,21 @@ void espnow_rx_cb(const esp_now_recv_info_t *info, const uint8_t *data,
       ESP_LOGI(TAG, "[RECEIVED] %s from: %s  ", msg_type_to_str(frame->type),
                mac_str);
       espnow_add_peer_by_mac(info->src_addr);
-      mark_device_paired(info->src_addr, true);
+      set_device_state(info->src_addr, true);
     }
 
     break;
   case MSG_UNPAIR_REQ:
     ESP_LOGI(TAG, "[RECEIVED] %s from: %s PASS: %s ",
              msg_type_to_str(frame->type), mac_str, frame->password);
-    send_unpair_request(info->src_addr, 10, true);
-    mark_device_paired(info->src_addr, false);
+    send_unpair_ack(info->src_addr);
+    set_device_state(info->src_addr, false);
     break;
   case MSG_UNPAIR_ACK:
     ESP_LOGI(TAG, "[RECEIVED] %s from: %s  ", msg_type_to_str(frame->type),
              mac_str);
     // delete_peer_by_mac(info->src_addr);
-    mark_device_paired(info->src_addr, false);
+    set_device_state(info->src_addr, false);
     break;
   case MSG_PAYLOAD:
     break;
@@ -309,7 +278,6 @@ void espnow_rx_cb(const esp_now_recv_info_t *info, const uint8_t *data,
 }
 
 void init_esp_now() {
-  // Init ESP-NOW
   if (esp_now_init() != ESP_OK) {
     ESP_LOGE(TAG, "ESP-NOW Init Failed");
     return;

@@ -7,6 +7,7 @@
 #include <mac_handler.h>
 #include <now_protocol_t.h>
 #include <stdio.h>
+#include <util.h>
 #include <webserver.h>
 #include <wifi_handler.h>
 
@@ -14,7 +15,6 @@ static const char *TAG = "MAIN";
 
 void whois_task(void *arg) {
   while (1) {
-    // send_to_mac(MSG_BEACON, MSG_BEACON, broadcast_mac);
     send_beacon();
     vTaskDelay(pdMS_TO_TICKS(10000));
   }

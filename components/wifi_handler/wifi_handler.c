@@ -29,7 +29,7 @@ void init_wifi_ap_sta() {
           {
               .ssid_len = 0,
               .channel = 1,
-              .max_connection = 4,
+              .max_connection = 1,
               .authmode = WIFI_AUTH_WPA_WPA2_PSK,
           },
   };

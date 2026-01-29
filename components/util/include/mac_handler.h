@@ -3,6 +3,6 @@
 #include "esp_log.h"
 #include "esp_wifi.h"
 
-const char *get_mac_str(const uint8_t *mac);
+char *get_mac_str(const uint8_t *mac);
 const uint8_t *get_chip_id(void);
 void init_my_mac();
