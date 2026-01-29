@@ -8,10 +8,11 @@ typedef enum {
   MSG_PAIR_REQ = 0x02,
   MSG_PAIR_ACK = 0x03,
 
-  MSG_PAIRED = 0x04,
+  MSG_UNPAIR_REQ = 0x04,
+  MSG_UNPAIR_ACK = 0x05,
 
-  MSG_PAYLOAD = 0x05,
-  MSG_PAYLOAD_ACK = 0x06,
+  MSG_PAYLOAD = 0x06,
+  MSG_PAYLOAD_ACK = 0x07,
 } msg_type_t;
 
 typedef struct __attribute__((packed)) {

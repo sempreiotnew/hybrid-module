@@ -90,6 +90,7 @@ static esp_err_t pair_delete_handler(httpd_req_t *req) {
     return ESP_FAIL;
   }
 
+  send_unpair_request(mac, 10, false);
   delete_peer_by_mac(mac);
   mark_device_paired2(mac, false);
 

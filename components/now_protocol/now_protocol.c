@@ -111,8 +111,10 @@ static const char *msg_type_to_str(uint8_t type) {
     return "MSG_PAIR_REQ";
   case MSG_PAIR_ACK:
     return "MSG_PAIR_ACK";
-  case MSG_PAIRED:
-    return "MSG_PAIRED";
+  case MSG_UNPAIR_REQ:
+    return "MSG_UNPAIR_REQ";
+  case MSG_UNPAIR_ACK:
+    return "MSG_UNPAIR_ACK";
   case MSG_PAYLOAD:
     return "MSG_PAYLOAD";
   case MSG_PAYLOAD_ACK:
@@ -168,6 +170,22 @@ void send_pair_request(const uint8_t *dst_mac, uint16_t seq, bool is_ack) {
   esp_wifi_get_mac(WIFI_IF_STA, frame.src);
 
   send_now_msg(is_ack ? dst_mac : broadcast_mac, frame);
+}
+
+void send_unpair_request(const uint8_t *dst_mac, uint16_t seq, bool is_ack) {
+
+  espnow_frame_t frame = {0};
+  frame.version = ESPNOW_PROTO_VERSION;
+  frame.type = is_ack ? MSG_UNPAIR_ACK : MSG_UNPAIR_REQ;
+  frame.seq = seq; // use a new sequence ID
+
+  memcpy(frame.dst, dst_mac, 6);
+
+  // strncpy(frame.password, "1234", sizeof(frame.password) - 1);
+
+  esp_wifi_get_mac(WIFI_IF_STA, frame.src);
+
+  send_now_msg(dst_mac, frame);
 }
 
 esp_err_t delete_peer_by_mac(const uint8_t mac_addr[6]) {
@@ -267,7 +285,17 @@ void espnow_rx_cb(const esp_now_recv_info_t *info, const uint8_t *data,
     }
 
     break;
-  case MSG_PAIRED:
+  case MSG_UNPAIR_REQ:
+    ESP_LOGI(TAG, "[RECEIVED] %s from: %s PASS: %s ",
+             msg_type_to_str(frame->type), mac_str, frame->password);
+    send_unpair_request(info->src_addr, 10, true);
+    mark_device_paired(info->src_addr, false);
+    break;
+  case MSG_UNPAIR_ACK:
+    ESP_LOGI(TAG, "[RECEIVED] %s from: %s  ", msg_type_to_str(frame->type),
+             mac_str);
+    delete_peer_by_mac(info->src_addr);
+    mark_device_paired(info->src_addr, false);
     break;
   case MSG_PAYLOAD:
     break;
