@@ -225,11 +225,7 @@ void espnow_rx_cb(const esp_now_recv_info_t *info, const uint8_t *data,
     break;
 
   case MSG_PAIR_REQ:
-
-    if (memcmp(frame->dst, get_chip_id(), 6) != 0) {
-      ESP_LOGI(TAG, "PAIR_REQ not for me, ignoring");
-
-    } else {
+    if (for_me) {
       ESP_LOGI(TAG, "[RECEIVED] %s from: %s PASS: %s ",
                msg_type_to_str(frame->type), mac_str, frame->password);
       if (strcmp(frame->password, "1234") == 0) {
@@ -244,10 +240,7 @@ void espnow_rx_cb(const esp_now_recv_info_t *info, const uint8_t *data,
 
     break;
   case MSG_PAIR_ACK:
-    if (memcmp(frame->dst, get_chip_id(), 6) != 0) {
-      ESP_LOGI(TAG, "MSG_PAIR_ACK not for me, ignoring");
-
-    } else {
+    if (for_me) {
       ESP_LOGI(TAG, "[RECEIVED] %s from: %s  ", msg_type_to_str(frame->type),
                mac_str);
       espnow_add_peer_by_mac(info->src_addr);

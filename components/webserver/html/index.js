@@ -28,20 +28,20 @@ function connectWebSocket() {
       return;
     }
 
-    if (!connectedDeviceMac && msg.source) {
-      connectedDeviceMac = msg.source;
+    if (!connectedDeviceMac && msg.mac) {
+      connectedDeviceMac = msg.mac;
       console.log("Bound UI to device:", connectedDeviceMac);
     }
 
     // 🔒 Ignore messages not from this ESP
-    if (msg.source !== connectedDeviceMac) {
-      console.warn("Discarding foreign device update:", msg.source);
+    if (msg.mac !== connectedDeviceMac) {
+      console.warn("Discarding foreign device update:", msg.mac);
       return;
     }
     switch (msg.action) {
       case "now_nearby_devices_info":
         if (Array.isArray(msg.payload)) {
-          updateDeviceList(msg.source, msg.payload);
+          updateDeviceList(msg.mac, msg.payload);
         } else {
           console.error("Invalid payload for update_devices:", msg.payload);
         }

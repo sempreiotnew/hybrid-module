@@ -12,7 +12,7 @@ char *send_to_websocket(device_info_t devices[], const char *action) {
 
   // Add action
   cJSON_AddStringToObject(root_obj, "action", action);
-  cJSON_AddStringToObject(root_obj, "source", get_mac_str(get_chip_id()));
+  cJSON_AddStringToObject(root_obj, "mac", get_mac_str(get_chip_id()));
 
   // Create payload array
   cJSON *payload_array = cJSON_CreateArray();

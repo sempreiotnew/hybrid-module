@@ -44,6 +44,47 @@ async function unpair(mac) {
   }
 }
 
+function getAddRemovePairHtml(devices, ul, isPair) {
+  // Paired devices
+  if (devices.length > 0) {
+    const pairedHeader = document.createElement("li");
+    pairedHeader.className = "section-header";
+    pairedHeader.innerHTML = `
+      <span class="status-badge ${isPair ? "paired" : "unpaired"}"></span>
+      <span>${isPair ? "PAREADO(s)" : "DISPONÍVEIS"} DEVICES (${devices.length})</span>
+    `;
+    ul.appendChild(pairedHeader);
+
+    devices.forEach((n) => {
+      const li = document.createElement("li");
+      li.className = `device-${isPair ? "paired" : "unpaired"}`;
+      li.innerHTML = `
+        <div class="network-info">
+          <div class="now-mac">${n.mac}</div>
+          <div class="now-last-msg">RSSI: ${n.rssi} dBm • Last: ${n.last_msg || "-"}</div>
+        </div>
+        <button class="${isPair ? "unpair" : "pair"}-btn" data-mac="${n.mac}">${isPair ? "REMOVER" : "PAREAR"}</button>
+      `;
+
+      const btn = isPair
+        ? li.querySelector(".unpair-btn")
+        : li.querySelector(".pair-btn");
+
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        isPair ? unpair(n.mac) : pair(n.mac);
+      });
+      btn.addEventListener("touchend", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        isPair ? unpair(n.mac) : pair(n.mac);
+      });
+
+      ul.appendChild(li);
+    });
+  }
+}
+
 function updateDeviceList(mac, devices) {
   const ul = document.getElementById("listNow");
   const titleInfo = document.getElementById("titleInfo");
@@ -58,77 +99,8 @@ function updateDeviceList(mac, devices) {
   const paired = devices.filter((n) => n.paired);
   const unpaired = devices.filter((n) => !n.paired);
 
-  // Paired devices
-  if (paired.length > 0) {
-    const pairedHeader = document.createElement("li");
-    pairedHeader.className = "section-header";
-    pairedHeader.innerHTML = `
-      <span class="status-badge paired"></span>
-      <span>PAIRED DEVICES (${paired.length})</span>
-    `;
-    ul.appendChild(pairedHeader);
-
-    paired.forEach((n) => {
-      const li = document.createElement("li");
-      li.className = "device-paired";
-      li.innerHTML = `
-        <div class="network-info">
-          <div class="now-mac">${n.mac}</div>
-          <div class="now-last-msg">RSSI: ${n.rssi} dBm • Last: ${n.last_msg || "-"}</div>
-        </div>
-        <button class="unpair-btn" data-mac="${n.mac}">REMOVE</button>
-      `;
-
-      const btn = li.querySelector(".unpair-btn");
-      btn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        unpair(n.mac);
-      });
-      btn.addEventListener("touchend", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        unpair(n.mac);
-      });
-
-      ul.appendChild(li);
-    });
-  }
-
-  // Unpaired devices
-  if (unpaired.length > 0) {
-    const unpairedHeader = document.createElement("li");
-    unpairedHeader.className = "section-header";
-    unpairedHeader.innerHTML = `
-      <span class="status-badge unpaired"></span>
-      <span>AVAILABLE DEVICES (${unpaired.length})</span>
-    `;
-    ul.appendChild(unpairedHeader);
-
-    unpaired.forEach((n) => {
-      const li = document.createElement("li");
-      li.className = "device-unpaired";
-      li.innerHTML = `
-        <div class="network-info">
-          <div class="now-mac">${n.mac}</div>
-          <div class="now-last-msg">RSSI: ${n.rssi} dBm • Last: ${n.last_msg || "-"}</div>
-        </div>
-        <button class="pair-btn" data-mac="${n.mac}">PAREAR</button>
-      `;
-
-      const btn = li.querySelector(".pair-btn");
-      btn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        pair(n.mac);
-      });
-      btn.addEventListener("touchend", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        pair(n.mac);
-      });
-
-      ul.appendChild(li);
-    });
-  }
+  getAddRemovePairHtml(paired, ul, true);
+  getAddRemovePairHtml(unpaired, ul, false);
 
   // Hide loader
   const loader = document.getElementById("nowLoader");
