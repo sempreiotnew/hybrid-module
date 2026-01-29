@@ -44,8 +44,10 @@ async function unpair(mac) {
   }
 }
 
-function updateDeviceList(devices) {
+function updateDeviceList(mac, devices) {
   const ul = document.getElementById("listNow");
+  const titleInfo = document.getElementById("titleInfo");
+  titleInfo.textContent = mac;
   ul.innerHTML = "";
 
   if (!devices || devices.length === 0) {

@@ -41,7 +41,7 @@ function connectWebSocket() {
     switch (msg.action) {
       case "now_nearby_devices_info":
         if (Array.isArray(msg.payload)) {
-          updateDeviceList(msg.payload);
+          updateDeviceList(msg.source, msg.payload);
         } else {
           console.error("Invalid payload for update_devices:", msg.payload);
         }

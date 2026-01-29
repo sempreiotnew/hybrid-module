@@ -19,7 +19,8 @@ void mark_device_paired(const uint8_t *mac, bool paired) {
       snprintf(mac_str, sizeof(mac_str), "%02X:%02X:%02X:%02X:%02X:%02X",
                mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
       send_to_websocket(devices, "now_nearby_devices_info");
-      ESP_LOGI(TAG, "Device marked as paired (runtime only): %s", mac_str);
+      ESP_LOGI(TAG, "Device marked as %s (runtime only): %s",
+               paired ? "PAIRED" : "UNPAIRED", mac_str);
       return;
     }
   }
@@ -294,7 +295,7 @@ void espnow_rx_cb(const esp_now_recv_info_t *info, const uint8_t *data,
   case MSG_UNPAIR_ACK:
     ESP_LOGI(TAG, "[RECEIVED] %s from: %s  ", msg_type_to_str(frame->type),
              mac_str);
-    delete_peer_by_mac(info->src_addr);
+    // delete_peer_by_mac(info->src_addr);
     mark_device_paired(info->src_addr, false);
     break;
   case MSG_PAYLOAD:
