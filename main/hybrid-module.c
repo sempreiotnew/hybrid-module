@@ -6,6 +6,7 @@
 #include <constants.h>
 #include <mac_handler.h>
 #include <now_protocol_t.h>
+#include <nvs_handler.h>
 #include <stdio.h>
 #include <util.h>
 #include <webserver.h>
@@ -27,6 +28,7 @@ void app_main(void) {
 
   init_wifi_ap_sta();
   init_my_mac();
+  init_nvs_data();
   init_web_server();
   init_esp_now();
 

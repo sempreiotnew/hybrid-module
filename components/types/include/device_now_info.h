@@ -7,7 +7,7 @@
 #define MAX_MAC_ADDR 6
 #define MAX_NAME_LEN 16
 #define MAX_DEVICES 10
-
+#define MAX_NEARBY 50
 typedef struct {
   uint8_t mac[6];
   char mac_str[18];
@@ -31,13 +31,24 @@ typedef struct {
 } device_info_t;
 
 typedef struct {
+  device_data_t data;
+  char parent[18];
+  char children[10][18];
+  int rssi;
+  uint32_t last_seen_ms;
+} nearby_devices_t;
+
+typedef struct {
   device_data_t device_data;
   paired_device_t parent;
   paired_device_t children[MAX_DEVICES];
 } main_device_info_t;
 
+extern device_info_t device;
 extern device_info_t devices[MAX_DEVICES];
 extern main_device_info_t main_device_info;
+extern nearby_devices_t nearby_devices_info[MAX_NEARBY];
 extern int device_count;
+extern int nearby_count;
 
 #endif

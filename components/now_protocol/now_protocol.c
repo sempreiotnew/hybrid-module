@@ -172,6 +172,36 @@ esp_err_t delete_peer_by_mac(const uint8_t mac_addr[6]) {
   return ret;
 }
 
+bool children_add(char children[10][18], const char *mac_str) {
+  // Check if already exists
+  for (int i = 0; i < 10; i++) {
+    if (strcmp(children[i], mac_str) == 0) {
+      return true; // already present
+    }
+  }
+
+  // Find empty slot
+  for (int i = 0; i < 10; i++) {
+    if (children[i][0] == '\0') {
+      snprintf(children[i], 18, "%s", mac_str);
+      return true;
+    }
+  }
+
+  // No space
+  return false;
+}
+
+bool children_remove(char children[10][18], const char *mac_str) {
+  for (int i = 0; i < 10; i++) {
+    if (strcmp(children[i], mac_str) == 0) {
+      children[i][0] = '\0'; // mark empty
+      return true;
+    }
+  }
+  return false; // not found
+}
+
 void espnow_rx_cb(const esp_now_recv_info_t *info, const uint8_t *data,
                   int len) {
 
@@ -190,23 +220,36 @@ void espnow_rx_cb(const esp_now_recv_info_t *info, const uint8_t *data,
 
   bool for_me = memcmp(frame->dst, get_chip_id(), 6) == 0;
   bool broadcast = memcmp(frame->dst, broadcast_mac, 6) == 0;
+  char *mac_str = get_mac_str(info->src_addr);
+
+  if (broadcast && frame->type == MSG_BEACON) {
+    if (!set_nearby_devices_info(info, frame)) { // If device is not in the list
+      add_nearby_device(info, frame);
+    }
+
+    ESP_LOGI(TAG, "[RECEIVED] %s from: %s ", msg_type_to_str(frame->ack_type),
+             mac_str);
+    // send_to_websocket(devices, "now_nearby_devices_info");
+    send_to_websocket_prov(nearby_devices_info, "now_nearby_devices_info");
+
+    return;
+  }
 
   if (for_me || broadcast) {
     ESP_LOGI(TAG, "SRC : %s", get_mac_str(info->src_addr));
     ESP_LOGI(TAG, "DEST: %s", get_mac_str(info->des_addr));
     ESP_LOGI(TAG, "MSG: %s", get_mac_str(frame->dst));
-    update_or_add_device(info, frame);
+    set_nearby_devices_info(info, frame);
   } else {
     ESP_LOGI(TAG, "NOT FOR ME");
   }
-
-  char *mac_str = get_mac_str(info->src_addr);
 
   switch (frame->type) {
   case MSG_BEACON:
     ESP_LOGI(TAG, "[RECEIVED] %s from: %s ", msg_type_to_str(frame->ack_type),
              mac_str);
-    send_to_websocket(devices, "now_nearby_devices_info");
+    // send_to_websocket(devices, "now_nearby_devices_info");
+    send_to_websocket_prov(nearby_devices_info, "now_nearby_devices_info");
 
     break;
 
@@ -215,10 +258,21 @@ void espnow_rx_cb(const esp_now_recv_info_t *info, const uint8_t *data,
       ESP_LOGI(TAG, "[RECEIVED] %s from: %s PASS: %s ",
                msg_type_to_str(frame->type), mac_str, frame->password);
       if (strcmp(frame->password, "1234") == 0) {
+        device_info_t dev;
         ESP_LOGI(TAG, "AUTHORIZED!!");
         espnow_add_peer_by_mac(info->src_addr);
         send_pair_ack(info->src_addr);
-        set_device_state_buffer(info->src_addr, true);
+        set_device_state_buffer(info->src_addr, frame->dst, true);
+
+        nvs_load_device(frame->dst, &dev);
+        children_add(dev.children, get_mac_str(info->src_addr));
+        nvs_save_device(&dev);
+        for (int i = 0; i < 10; i++) {
+          if (dev.children[i][0] != '\0') {
+            ESP_LOGI(TAG, "Child %d: %s", i, dev.children[i]);
+          }
+        }
+
       } else {
         ESP_LOGW(TAG, "NOT AUTHORIZED!!");
       }
@@ -227,24 +281,53 @@ void espnow_rx_cb(const esp_now_recv_info_t *info, const uint8_t *data,
     break;
   case MSG_PAIR_ACK:
     if (for_me) {
+      device_info_t dev;
       ESP_LOGI(TAG, "[RECEIVED] %s from: %s  ", msg_type_to_str(frame->type),
                mac_str);
       espnow_add_peer_by_mac(info->src_addr);
-      set_device_state_buffer(info->src_addr, true);
+      set_device_state_buffer(info->src_addr, frame->dst, true);
+
+      nvs_load_device(frame->dst, &dev);
+      children_add(dev.children, get_mac_str(info->src_addr));
+      nvs_save_device(&dev);
+      for (int i = 0; i < 10; i++) {
+        if (dev.children[i][0] != '\0') {
+          ESP_LOGI(TAG, "Child %d: %s", i, dev.children[i]);
+        }
+      }
     }
 
     break;
   case MSG_UNPAIR_REQ:
     ESP_LOGI(TAG, "[RECEIVED] %s from: %s PASS: %s ",
              msg_type_to_str(frame->type), mac_str, frame->password);
+
+    device_info_t dev;
     send_unpair_ack(info->src_addr);
-    set_device_state_buffer(info->src_addr, false);
+    set_device_state_buffer(info->src_addr, frame->dst, false);
+    nvs_load_device(frame->dst, &dev);
+    children_remove(dev.children, get_mac_str(info->src_addr));
+    nvs_save_device(&dev);
+    for (int i = 0; i < 10; i++) {
+      if (dev.children[i][0] != '\0') {
+        ESP_LOGI(TAG, "Child  %d: %s", i, dev.children[i]);
+      }
+    }
     break;
   case MSG_UNPAIR_ACK:
     ESP_LOGI(TAG, "[RECEIVED] %s from: %s  ", msg_type_to_str(frame->type),
              mac_str);
     // delete_peer_by_mac(info->src_addr);
-    set_device_state_buffer(info->src_addr, false);
+    set_device_state_buffer(info->src_addr, frame->dst, false);
+    nvs_load_device(frame->dst, &dev);
+    children_remove(dev.children, get_mac_str(info->src_addr));
+    nvs_save_device(&dev);
+    for (int i = 0; i < 10; i++) {
+      if (dev.children[i][0] != '\0') {
+        ESP_LOGI(TAG, "Child  %d: %s", i, dev.children[i]);
+      }
+    }
+
     break;
   case MSG_PAYLOAD:
     break;
@@ -270,6 +353,15 @@ void init_esp_now() {
   // Register callback for receiving messages
   esp_now_register_recv_cb(espnow_rx_cb);
   espnow_add_peer_by_mac(broadcast_mac);
+  for (int i = 0; i < 10; i++) {
+    if (device.children[i][0] != '\0') {
+      uint8_t mac[6]; // <-- allocate memory
+      mac_str_to_bytes(device.children[i], mac);
+      espnow_add_peer_by_mac(mac);
+      set_device_state_buffer(mac, get_chip_id(), true);
+      ESP_LOGI(TAG, "PEER CHILD ADDED ! %s", device.children[i]);
+    }
+  }
 }
 
 void remove_stale_devices_task(void *arg) {
@@ -279,16 +371,16 @@ void remove_stale_devices_task(void *arg) {
     bool updated = false;
     uint32_t now = xTaskGetTickCount() * portTICK_PERIOD_MS;
 
-    for (int i = 0; i < device_count;) {
-      if (now - devices[i].last_seen_ms > timeout_ms) {
+    for (int i = 0; i < nearby_count;) {
+      if (now - nearby_devices_info[i].last_seen_ms > timeout_ms) {
         ESP_LOGI(TAG, "Device %s being removed",
-                 devices[i].device_data.mac_str);
+                 nearby_devices_info[i].data.mac_str);
 
-        for (int j = i; j < device_count - 1; j++) {
-          devices[j] = devices[j + 1];
+        for (int j = i; j < nearby_count - 1; j++) {
+          nearby_devices_info[j] = nearby_devices_info[j + 1];
         }
 
-        device_count--;
+        nearby_count--;
         updated = true;
       } else {
         i++;
@@ -297,7 +389,7 @@ void remove_stale_devices_task(void *arg) {
 
     // ✅ Send AFTER the list is fully updated
     if (updated) {
-      send_to_websocket(devices, "now_nearby_devices_info");
+      send_to_websocket_prov(nearby_devices_info, "now_nearby_devices_info");
     }
 
     // ✅ ALWAYS yield to the scheduler

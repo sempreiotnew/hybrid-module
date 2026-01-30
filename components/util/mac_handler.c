@@ -21,3 +21,19 @@ char *get_mac_str(const uint8_t *mac) {
            mac[1], mac[2], mac[3], mac[4], mac[5]);
   return mac_str;
 }
+
+int mac_str_to_bytes(const char *mac_str, uint8_t *mac) {
+  if (!mac_str || !mac)
+    return -1;
+
+  for (int i = 0; i < 6; i++) {
+    mac[i] = (uint8_t)strtoul(mac_str, (char **)&mac_str, 16);
+    if (i < 5) {
+      if (*mac_str != ':')
+        return -1; // expect colon
+      mac_str++;   // skip colon
+    }
+  }
+
+  return 0; // success
+}
