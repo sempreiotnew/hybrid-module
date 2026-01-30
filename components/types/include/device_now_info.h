@@ -22,6 +22,8 @@ typedef struct {
   device_data_t device_data;
   bool paired;
   int rssi;
+  char parent[18];
+  char children[10][18];
   char last_msg[32];
   uint32_t last_seen_ms; // timestamp in milliseconds
   uint8_t last_type;     // msg_type_t

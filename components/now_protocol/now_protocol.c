@@ -7,24 +7,10 @@
 #include <mac_handler.h>
 #include <now_protocol_t.h>
 #include <now_protocol_websocket.h>
+#include <nvs_handler.h>
 #include <util.h>
 
 static const char *TAG = "now_protocol.c";
-
-void set_device_state(const uint8_t *mac, bool paired) {
-  for (int i = 0; i < device_count; i++) {
-    if (memcmp(devices[i].device_data.mac, mac, 6) == 0) {
-
-      devices[i].paired = paired;
-      send_to_websocket(devices, "now_nearby_devices_info");
-      ESP_LOGI(TAG, "Device marked as %s (runtime only): %s",
-               paired ? "PAIRED" : "UNPAIRED", get_mac_str(mac));
-      return;
-    }
-  }
-
-  ESP_LOGW(TAG, "Cannot mark device paired: not found in table");
-}
 
 esp_err_t espnow_add_peer_by_mac(const uint8_t *mac) {
   if (!mac)
@@ -232,7 +218,7 @@ void espnow_rx_cb(const esp_now_recv_info_t *info, const uint8_t *data,
         ESP_LOGI(TAG, "AUTHORIZED!!");
         espnow_add_peer_by_mac(info->src_addr);
         send_pair_ack(info->src_addr);
-        set_device_state(info->src_addr, true);
+        set_device_state_buffer(info->src_addr, true);
       } else {
         ESP_LOGW(TAG, "NOT AUTHORIZED!!");
       }
@@ -244,7 +230,7 @@ void espnow_rx_cb(const esp_now_recv_info_t *info, const uint8_t *data,
       ESP_LOGI(TAG, "[RECEIVED] %s from: %s  ", msg_type_to_str(frame->type),
                mac_str);
       espnow_add_peer_by_mac(info->src_addr);
-      set_device_state(info->src_addr, true);
+      set_device_state_buffer(info->src_addr, true);
     }
 
     break;
@@ -252,13 +238,13 @@ void espnow_rx_cb(const esp_now_recv_info_t *info, const uint8_t *data,
     ESP_LOGI(TAG, "[RECEIVED] %s from: %s PASS: %s ",
              msg_type_to_str(frame->type), mac_str, frame->password);
     send_unpair_ack(info->src_addr);
-    set_device_state(info->src_addr, false);
+    set_device_state_buffer(info->src_addr, false);
     break;
   case MSG_UNPAIR_ACK:
     ESP_LOGI(TAG, "[RECEIVED] %s from: %s  ", msg_type_to_str(frame->type),
              mac_str);
     // delete_peer_by_mac(info->src_addr);
-    set_device_state(info->src_addr, false);
+    set_device_state_buffer(info->src_addr, false);
     break;
   case MSG_PAYLOAD:
     break;
