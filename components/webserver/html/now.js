@@ -162,14 +162,14 @@ function renderTree(data) {
 
     // Horizontal line connecting paired devices
     if (pairedDevices.length > 1) {
-      const deviceWidth = 220;
-      const gap = 30;
+      const deviceWidth = 150; // Reduced for mobile
+      const gap = 15; // Reduced gap for mobile
       const totalWidth =
         pairedDevices.length * deviceWidth + (pairedDevices.length - 1) * gap;
 
       const horizontalLine = document.createElement("div");
       horizontalLine.className = "horizontal-line";
-      horizontalLine.style.width = `${totalWidth - 100}px`;
+      horizontalLine.style.width = `${totalWidth - 80}px`; // Adjusted for smaller devices
       horizontalLine.style.left = "50%";
       horizontalLine.style.transform = "translateX(-50%)";
       horizontalContainer.appendChild(horizontalLine);
@@ -192,12 +192,12 @@ function renderTree(data) {
       const signalBars = createSignalBars(device.rssi);
 
       leafNode.innerHTML = `
-                        <div class="mac">📱 ${device.mac}</div>
+                        <div class="mac">${device.mac}</div>
                         <div class="details">
                             <span class="rssi">RSSI: ${device.rssi} dBm</span>
                             ${signalBars}
                         </div>
-                        <span class="status-badge paired-badge">✓ Paired</span>
+                        <span class="tree-status-badge paired-badge">✓ Paired</span>
                     `;
 
       branchContainer.appendChild(leafNode);
@@ -229,12 +229,12 @@ function renderTree(data) {
       const signalBars = createSignalBars(device.rssi);
 
       leafNode.innerHTML = `
-                        <div class="mac">📱 ${device.mac}</div>
+                        <div class="mac">${device.mac}</div>
                         <div class="details">
                             <span class="rssi">RSSI: ${device.rssi} dBm</span>
                             ${signalBars}
                         </div>
-                        <span class="status-badge unpaired-badge">○ Unpaired</span>
+                        <span class="tree-status-badge unpaired-badge">○ Unpaired</span>
                     `;
 
       disconnectedDevices.appendChild(leafNode);
@@ -244,89 +244,3 @@ function renderTree(data) {
     treeDiv.appendChild(disconnectedSection);
   }
 }
-
-// function renderTree(data) {
-//   const treeDiv = document.getElementById("tree");
-//   treeDiv.innerHTML = "";
-
-//   // Main connector container
-//   const connectorContainer = document.createElement("div");
-//   connectorContainer.className = "connector-container";
-
-//   // Create root node
-//   const rootNode = document.createElement("div");
-//   rootNode.className = "node root-node";
-//   rootNode.innerHTML = `
-//                 <div class="mac">📡 ${data.mac}</div>
-//                 <div class="details">Root Device</div>
-//             `;
-
-//   connectorContainer.appendChild(rootNode);
-
-//   // Create children container
-//   console.log(data.payload);
-//   if (data.payload && data.payload.length > 0) {
-//     // Main vertical line from root
-//     const verticalLine = document.createElement("div");
-//     verticalLine.className = "vertical-line";
-//     connectorContainer.appendChild(verticalLine);
-
-//     // Horizontal container for branches
-//     const horizontalContainer = document.createElement("div");
-//     horizontalContainer.className = "horizontal-container";
-
-//     // Calculate horizontal line width
-//     const numDevices = data.payload.length;
-//     const deviceWidth = 220; // approximate
-//     const gap = 30;
-//     const totalWidth = numDevices * deviceWidth + (numDevices - 1) * gap;
-
-//     // Horizontal line connecting all branches
-//     if (numDevices > 1) {
-//       const horizontalLine = document.createElement("div");
-//       horizontalLine.className = "horizontal-line";
-//       horizontalLine.style.width = `${totalWidth - 100}px`;
-//       horizontalLine.style.left = "50%";
-//       horizontalLine.style.transform = "translateX(-50%)";
-//       horizontalContainer.appendChild(horizontalLine);
-//     }
-
-//     // Create branch for each device
-//     data.payload.forEach((device, index) => {
-//       const branchContainer = document.createElement("div");
-//       branchContainer.className = "branch-container";
-
-//       // Branch line
-//       const branchLine = document.createElement("div");
-//       branchLine.className = "branch-line";
-//       branchContainer.appendChild(branchLine);
-
-//       // Leaf node
-//       const leafNode = document.createElement("div");
-//       const pairedClass = device.paired ? "paired" : "unpaired";
-//       leafNode.className = `node leaf-node ${pairedClass}`;
-
-//       const statusBadge = device.paired
-//         ? '<span class="status-badge paired-badge">✓ Paired</span>'
-//         : '<span class="status-badge unpaired-badge">○ Unpaired</span>';
-
-//       const signalBars = createSignalBars(device.rssi);
-
-//       leafNode.innerHTML = `
-//                         <div class="mac">📱 ${device.mac}</div>
-//                         <div class="details">
-//                             <span class="rssi">RSSI: ${device.rssi} dBm</span>
-//                             ${signalBars}
-//                         </div>
-//                         ${statusBadge}
-//                     `;
-
-//       branchContainer.appendChild(leafNode);
-//       horizontalContainer.appendChild(branchContainer);
-//     });
-
-//     connectorContainer.appendChild(horizontalContainer);
-//   }
-
-//   treeDiv.appendChild(connectorContainer);
-// }

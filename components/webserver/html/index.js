@@ -41,6 +41,70 @@ function connectWebSocket() {
     switch (msg.action) {
       case "now_nearby_devices_info":
         if (Array.isArray(msg.payload)) {
+          // const fakeDevices = [
+          //   {
+          //     mac: "FA:KE:00:00:00:01",
+          //     name: "Fake 1",
+          //     rssi: -40,
+          //     parent: msg.mac,
+          //     paired: false,
+          //   },
+          //   {
+          //     mac: "FA:KE:00:00:00:02",
+          //     name: "Fake 2",
+          //     rssi: -42,
+          //     parent: msg.mac,
+          //     paired: false,
+          //   },
+          //   {
+          //     mac: "FA:KE:00:00:00:03",
+          //     name: "Fake 3",
+          //     rssi: -45,
+          //     parent: msg.mac,
+          //     paired: true,
+          //   },
+          //   {
+          //     mac: "FA:KE:00:00:00:04",
+          //     name: "Fake 4",
+          //     rssi: -48,
+          //     parent: msg.mac,
+          //     paired: false,
+          //   },
+          //   {
+          //     mac: "FA:KE:00:00:00:05",
+          //     name: "Fake 5",
+          //     rssi: -50,
+          //     parent: msg.mac,
+          //     paired: true,
+          //   },
+          //   {
+          //     mac: "FA:KE:00:00:00:06",
+          //     name: "Fake 6",
+          //     rssi: -52,
+          //     parent: msg.mac,
+          //     paired: false,
+          //   },
+          //   {
+          //     mac: "FA:KE:00:00:00:07",
+          //     name: "Fake 7",
+          //     rssi: -55,
+          //     parent: msg.mac,
+          //     paired: true,
+          //   },
+          //   {
+          //     mac: "FA:KE:00:00:00:08",
+          //     name: "Fake 8",
+          //     rssi: -58,
+          //     parent: msg.mac,
+          //     paired: false,
+          //   },
+          // ];
+
+          // const combinedPayload = msg.payload.concat(
+          //   fakeDevices.slice(0, Math.max(0, 10 - msg.payload.length)),
+          // );
+
+          // msg.payload = combinedPayload;
           renderTree(msg);
           updateDeviceList(msg.mac, msg.payload);
         } else {
