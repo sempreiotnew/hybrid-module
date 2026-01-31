@@ -84,8 +84,8 @@ void update_or_add_device(const esp_now_recv_info_t *info,
 void send_now_msg(const uint8_t *dst_mac, espnow_frame_t data) {
   esp_err_t res = esp_now_send(dst_mac, (uint8_t *)&data, sizeof(data));
   if (res == ESP_OK) {
-    ESP_LOGI(TAG, "[SENT] type=%s seq=%u to %s", msg_type_to_str(data.type),
-             data.seq, get_mac_str(dst_mac));
+    ESP_LOGI(TAG, "type=%s seq=%u to %s", msg_type_to_str(data.type), data.seq,
+             get_mac_str(dst_mac));
 
   } else {
     ESP_LOGW(TAG, "Failed to send msg %d to %s", res, get_mac_str(dst_mac));
@@ -222,36 +222,24 @@ void espnow_rx_cb(const esp_now_recv_info_t *info, const uint8_t *data,
   bool broadcast = memcmp(frame->dst, broadcast_mac, 6) == 0;
   char *mac_str = get_mac_str(info->src_addr);
 
+  char src[18], dst_addr[18], dst[18];
+  mac_to_str(info->src_addr, src);
+  mac_to_str(info->des_addr, dst_addr);
+  mac_to_str(frame->dst, dst);
+
+  ESP_LOGI(TAG, "type:%s src:%s dst_addr:%s dst:%s",
+           msg_type_to_str(frame->type), src, dst_addr, dst);
+
   if (broadcast && frame->type == MSG_BEACON) {
     if (!set_nearby_devices_info(info, frame)) { // If device is not in the list
       add_nearby_device(info, frame);
     }
-
-    ESP_LOGI(TAG, "[RECEIVED] %s from: %s ", msg_type_to_str(frame->ack_type),
-             mac_str);
-    // send_to_websocket(devices, "now_nearby_devices_info");
     send_to_websocket_prov(nearby_devices_info, "now_nearby_devices_info");
 
     return;
   }
 
-  if (for_me || broadcast) {
-    ESP_LOGI(TAG, "SRC : %s", get_mac_str(info->src_addr));
-    ESP_LOGI(TAG, "DEST: %s", get_mac_str(info->des_addr));
-    ESP_LOGI(TAG, "MSG: %s", get_mac_str(frame->dst));
-    set_nearby_devices_info(info, frame);
-  } else {
-    ESP_LOGI(TAG, "NOT FOR ME");
-  }
-
   switch (frame->type) {
-  case MSG_BEACON:
-    ESP_LOGI(TAG, "[RECEIVED] %s from: %s ", msg_type_to_str(frame->ack_type),
-             mac_str);
-    // send_to_websocket(devices, "now_nearby_devices_info");
-    send_to_websocket_prov(nearby_devices_info, "now_nearby_devices_info");
-
-    break;
 
   case MSG_PAIR_REQ:
     if (for_me) {
@@ -262,7 +250,7 @@ void espnow_rx_cb(const esp_now_recv_info_t *info, const uint8_t *data,
         ESP_LOGI(TAG, "AUTHORIZED!!");
         espnow_add_peer_by_mac(info->src_addr);
         send_pair_ack(info->src_addr);
-        set_device_state_buffer(info->src_addr, frame->dst, true);
+        set_nearby_devices_info_buffer(info->src_addr, frame->dst, false);
 
         nvs_load_device(frame->dst, &dev);
         children_add(dev.children, get_mac_str(info->src_addr));
@@ -285,9 +273,10 @@ void espnow_rx_cb(const esp_now_recv_info_t *info, const uint8_t *data,
       ESP_LOGI(TAG, "[RECEIVED] %s from: %s  ", msg_type_to_str(frame->type),
                mac_str);
       espnow_add_peer_by_mac(info->src_addr);
-      set_device_state_buffer(info->src_addr, frame->dst, true);
+      set_nearby_devices_info_buffer(info->src_addr, get_chip_id(), true);
 
       nvs_load_device(frame->dst, &dev);
+
       children_add(dev.children, get_mac_str(info->src_addr));
       nvs_save_device(&dev);
       for (int i = 0; i < 10; i++) {
@@ -304,7 +293,7 @@ void espnow_rx_cb(const esp_now_recv_info_t *info, const uint8_t *data,
 
     device_info_t dev;
     send_unpair_ack(info->src_addr);
-    set_device_state_buffer(info->src_addr, frame->dst, false);
+    set_nearby_devices_info_buffer(info->src_addr, frame->dst, false);
     nvs_load_device(frame->dst, &dev);
     children_remove(dev.children, get_mac_str(info->src_addr));
     nvs_save_device(&dev);
@@ -318,7 +307,7 @@ void espnow_rx_cb(const esp_now_recv_info_t *info, const uint8_t *data,
     ESP_LOGI(TAG, "[RECEIVED] %s from: %s  ", msg_type_to_str(frame->type),
              mac_str);
     // delete_peer_by_mac(info->src_addr);
-    set_device_state_buffer(info->src_addr, frame->dst, false);
+    set_nearby_devices_info_buffer(info->src_addr, get_chip_id(), false);
     nvs_load_device(frame->dst, &dev);
     children_remove(dev.children, get_mac_str(info->src_addr));
     nvs_save_device(&dev);
@@ -358,7 +347,7 @@ void init_esp_now() {
       uint8_t mac[6]; // <-- allocate memory
       mac_str_to_bytes(device.children[i], mac);
       espnow_add_peer_by_mac(mac);
-      set_device_state_buffer(mac, get_chip_id(), true);
+      set_nearby_devices_info_buffer(mac, get_chip_id(), true);
       ESP_LOGI(TAG, "PEER CHILD ADDED ! %s", device.children[i]);
     }
   }

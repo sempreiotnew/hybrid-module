@@ -4,12 +4,13 @@
 #include <now_protocol_t.h>
 #include <nvs_handler.h>
 
-#define DEVICE_NVS_NAMESPACE "devices"
+#define NEARBY_DEVICES_NVS_NAMESPACE "nearby"
+#define DEVICE_INFO_NVS_NAMESPACE "device"
 
 const char *TAG = "nvs_handler.c";
 
-void set_device_state_buffer(const uint8_t *mac, const uint8_t *parent,
-                             bool paired) {
+void set_nearby_devices_info_buffer(const uint8_t *mac, const uint8_t *parent,
+                                    bool paired) {
   for (int i = 0; i < nearby_count; i++) {
     if (memcmp(nearby_devices_info[i].data.mac, mac, 6) == 0) {
 
@@ -23,8 +24,6 @@ void set_device_state_buffer(const uint8_t *mac, const uint8_t *parent,
         nearby_devices_info[i].parent[0] = '\0';
       }
       send_to_websocket_prov(nearby_devices_info, "now_nearby_devices_info");
-      ESP_LOGI(TAG, "Device marked as %s (runtime only): %s",
-               paired ? "PAIRED" : "UNPAIRED", get_mac_str(mac));
       return;
     }
   }
@@ -108,7 +107,7 @@ esp_err_t nvs_save_device(const device_info_t *device) {
   nvs_handle_t handle;
   esp_err_t err;
 
-  err = nvs_open(DEVICE_NVS_NAMESPACE, NVS_READWRITE, &handle);
+  err = nvs_open(NEARBY_DEVICES_NVS_NAMESPACE, NVS_READWRITE, &handle);
   if (err != ESP_OK)
     return err;
 
@@ -138,7 +137,7 @@ esp_err_t nvs_load_device(const uint8_t mac[6], device_info_t *out_device) {
   //   char key[8] = get_chip_id();
   size_t required_size = sizeof(device_info_t);
 
-  err = nvs_open(DEVICE_NVS_NAMESPACE, NVS_READONLY, &handle);
+  err = nvs_open(NEARBY_DEVICES_NVS_NAMESPACE, NVS_READONLY, &handle);
   if (err != ESP_OK)
     return err;
 

@@ -73,7 +73,7 @@ static esp_err_t pair_delete_handler(httpd_req_t *req) {
 
   send_unpair_request(mac, 10, false);
   delete_peer_by_mac(mac);
-  set_device_state_buffer(mac, get_chip_id(), false);
+  set_nearby_devices_info_buffer(mac, get_chip_id(), false);
 
   httpd_resp_send(req, NULL, 0);
   return ESP_OK;

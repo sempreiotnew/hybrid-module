@@ -6,8 +6,8 @@
 #include <now_protocol_websocket.h>
 
 void init_nvs_data();
-void set_device_state_buffer(const uint8_t *mac, const uint8_t *parent,
-                             bool paired);
+void set_nearby_devices_info_buffer(const uint8_t *mac, const uint8_t *parent,
+                                    bool paired);
 bool set_nearby_devices_info(const esp_now_recv_info_t *info,
                              const espnow_frame_t *frame);
 void add_nearby_device(const esp_now_recv_info_t *info,
