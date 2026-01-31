@@ -1,4 +1,5 @@
 let pairedDevices = new Set();
+let globalParentMac = "";
 
 async function scan_now() {
   if (isScanningNow) return;
@@ -57,13 +58,35 @@ function getAddRemovePairHtml(devices, ul, isPair) {
 
     devices.forEach((n) => {
       const li = document.createElement("li");
+      console.log("teste");
+      console.log(n.mac);
+      console.log(globalParentMac);
+
       li.className = `device-${isPair ? "paired" : "unpaired"}`;
+
+      // li.innerHTML = `
+      //   <div class="network-info">
+      //     <div class="now-mac">${n.mac}</div>
+      //     <div class="now-last-msg">RSSI: ${n.rssi} dBm • Last: ${n.last_msg || "-"}</div>
+      //   </div>
+      //   <button class="${isPair ? "unpair" : "pair"}-btn" data-mac="${n.mac}">${isPair ? "REMOVER" : "PAREAR"}</button>
+      // `;
+
       li.innerHTML = `
         <div class="network-info">
           <div class="now-mac">${n.mac}</div>
-          <div class="now-last-msg">RSSI: ${n.rssi} dBm • Last: ${n.last_msg || "-"}</div>
+          <div class="now-last-msg">
+            RSSI: ${n.rssi} dBm • Last: ${n.last_msg || "-"}
+          </div>
         </div>
-        <button class="${isPair ? "unpair" : "pair"}-btn" data-mac="${n.mac}">${isPair ? "REMOVER" : "PAREAR"}</button>
+        <button
+          style=${n.mac === globalParentMac ? "background-color : 'blue'" : ""}
+          class="${isPair ? "unpair" : "pair"}-btn"
+          data-mac="${n.mac}"
+          ${n.mac === globalParentMac ? "disabled" : ""}
+        >
+          ${n.mac === globalParentMac ? "PARENT" : isPair ? "REMOVER" : "PAREAR"}
+        </button>
       `;
 
       const btn = isPair
@@ -108,6 +131,24 @@ function updateDeviceList(mac, devices) {
 
   hasNowData = true;
   isScanningNow = false;
+}
+
+function updateDeviceInfo(deviceInfo) {
+  const titleInfo = document.getElementById("titleInfo");
+  const parent = document.getElementById("parent");
+  const children = document.getElementById("children");
+  const nowContent = document.getElementById("nowContent");
+  globalParentMac = deviceInfo.parent;
+
+  children.textContent = "";
+  titleInfo.textContent = deviceInfo.name ? deviceInfo.name : deviceInfo.mac;
+  parent.textContent = deviceInfo.parent ? deviceInfo.parent : "N/A";
+
+  if (deviceInfo.children.length > 0) {
+    deviceInfo.children.forEach((child) => {
+      children.textContent += `- ${child}`;
+    });
+  }
 }
 
 function getSignalStrength(rssi) {

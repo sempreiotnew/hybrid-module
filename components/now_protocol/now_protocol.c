@@ -108,6 +108,7 @@ void send_beacon(void) {
   if (res == ESP_OK) {
     ESP_LOGI(TAG, "[SENT] type=%s to FF:FF:FF:FF:FF:FF",
              msg_type_to_str(frame.type));
+
   } else {
     ESP_LOGW(TAG, "Failed to send BEACON: %d", res);
   }
@@ -235,41 +236,45 @@ void espnow_rx_cb(const esp_now_recv_info_t *info, const uint8_t *data,
       add_nearby_device(info, frame);
     }
     send_to_websocket_prov(nearby_devices_info, "now_nearby_devices_info");
+    send_to_websocket_device_info(device, "device_info");
 
     return;
   }
 
   switch (frame->type) {
 
-  case MSG_PAIR_REQ:
+  case MSG_PAIR_REQ: {
+    device_info_t dev;
     if (for_me) {
       ESP_LOGI(TAG, "[RECEIVED] %s from: %s PASS: %s ",
                msg_type_to_str(frame->type), mac_str, frame->password);
       if (strcmp(frame->password, "1234") == 0) {
-        device_info_t dev;
+
         ESP_LOGI(TAG, "AUTHORIZED!!");
         espnow_add_peer_by_mac(info->src_addr);
         send_pair_ack(info->src_addr);
         set_nearby_devices_info_buffer(info->src_addr, frame->dst, false);
 
         nvs_load_device(frame->dst, &dev);
-        children_add(dev.children, get_mac_str(info->src_addr));
+        snprintf(dev.parent, sizeof(dev.parent), "%s",
+                 get_mac_str(info->src_addr));
         nvs_save_device(&dev);
-        for (int i = 0; i < 10; i++) {
-          if (dev.children[i][0] != '\0') {
-            ESP_LOGI(TAG, "Child %d: %s", i, dev.children[i]);
-          }
-        }
+        device = dev;
+
+        send_to_websocket_device_info(device, "device_info");
+        ESP_LOGI(TAG, "PARENT ASSOCIATED %s", dev.parent);
 
       } else {
         ESP_LOGW(TAG, "NOT AUTHORIZED!!");
       }
     }
+  }
 
-    break;
-  case MSG_PAIR_ACK:
+  break;
+  case MSG_PAIR_ACK: {
+    device_info_t dev;
     if (for_me) {
-      device_info_t dev;
+
       ESP_LOGI(TAG, "[RECEIVED] %s from: %s  ", msg_type_to_str(frame->type),
                mac_str);
       espnow_add_peer_by_mac(info->src_addr);
@@ -278,46 +283,52 @@ void espnow_rx_cb(const esp_now_recv_info_t *info, const uint8_t *data,
       nvs_load_device(frame->dst, &dev);
 
       children_add(dev.children, get_mac_str(info->src_addr));
+      ESP_LOGI(TAG, "CHILD ASSOCIATED %s", get_mac_str(info->src_addr));
       nvs_save_device(&dev);
-      for (int i = 0; i < 10; i++) {
-        if (dev.children[i][0] != '\0') {
-          ESP_LOGI(TAG, "Child %d: %s", i, dev.children[i]);
-        }
-      }
+      device = dev; // update global struct
+      send_to_websocket_device_info(device, "device_info");
+      // for (int i = 0; i < 10; i++) {
+      //   if (dev.children[i][0] != '\0') {
+      //     ESP_LOGI(TAG, "Child %d: %s", i, dev.children[i]);
+      //   }
+      // }
     }
+  }
 
-    break;
-  case MSG_UNPAIR_REQ:
+  break;
+  case MSG_UNPAIR_REQ: {
+    device_info_t dev;
     ESP_LOGI(TAG, "[RECEIVED] %s from: %s PASS: %s ",
              msg_type_to_str(frame->type), mac_str, frame->password);
 
-    device_info_t dev;
     send_unpair_ack(info->src_addr);
     set_nearby_devices_info_buffer(info->src_addr, frame->dst, false);
     nvs_load_device(frame->dst, &dev);
-    children_remove(dev.children, get_mac_str(info->src_addr));
+    ESP_LOGI(TAG, "PARENT REMOVED %s", dev.parent);
+    dev.parent[0] = '\0';
     nvs_save_device(&dev);
-    for (int i = 0; i < 10; i++) {
-      if (dev.children[i][0] != '\0') {
-        ESP_LOGI(TAG, "Child  %d: %s", i, dev.children[i]);
-      }
-    }
-    break;
-  case MSG_UNPAIR_ACK:
+    device = dev;
+    send_to_websocket_device_info(device, "device_info");
+
+  } break;
+  case MSG_UNPAIR_ACK: {
+    device_info_t dev;
     ESP_LOGI(TAG, "[RECEIVED] %s from: %s  ", msg_type_to_str(frame->type),
              mac_str);
     // delete_peer_by_mac(info->src_addr);
+
     set_nearby_devices_info_buffer(info->src_addr, get_chip_id(), false);
     nvs_load_device(frame->dst, &dev);
-    children_remove(dev.children, get_mac_str(info->src_addr));
-    nvs_save_device(&dev);
-    for (int i = 0; i < 10; i++) {
-      if (dev.children[i][0] != '\0') {
-        ESP_LOGI(TAG, "Child  %d: %s", i, dev.children[i]);
-      }
-    }
 
-    break;
+    children_remove(dev.children, get_mac_str(info->src_addr));
+    ESP_LOGI(TAG, "CHILD REMOVED %s", get_mac_str(info->src_addr));
+
+    nvs_save_device(&dev);
+    device = dev;
+    send_to_websocket_device_info(device, "device_info");
+  }
+
+  break;
   case MSG_PAYLOAD:
     break;
   case MSG_PAYLOAD_ACK:
@@ -351,6 +362,8 @@ void init_esp_now() {
       ESP_LOGI(TAG, "PEER CHILD ADDED ! %s", device.children[i]);
     }
   }
+
+  send_to_websocket_device_info(device, "device_info");
 }
 
 void remove_stale_devices_task(void *arg) {

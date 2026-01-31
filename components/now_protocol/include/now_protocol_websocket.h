@@ -4,5 +4,7 @@
 #include "websocket.h"
 #include <stdlib.h>
 char *send_to_websocket(device_info_t devices[], const char *action);
+char *send_to_websocket_device_info(device_info_t device_info,
+                                    const char *action);
 char *send_to_websocket_prov(nearby_devices_t nearby_devices[],
                              const char *action);

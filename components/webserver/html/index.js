@@ -3,6 +3,7 @@ let isScanningNow = false;
 let ws;
 let connectedDeviceMac = null;
 
+let deviceInfo;
 function connectWebSocket() {
   ws = new WebSocket("ws://" + location.host + "/ws");
 
@@ -105,19 +106,24 @@ function connectWebSocket() {
           // );
 
           // msg.payload = combinedPayload;
-          renderTree(msg);
+          // renderTree(msg);
+
+          updateDeviceInfo({
+            mac: msg.mac,
+            name: deviceInfo?.name ?? msg.mac,
+            parent: deviceInfo?.parent ?? "",
+            children: deviceInfo?.children ?? [],
+          });
           updateDeviceList(msg.mac, msg.payload);
         } else {
           console.error("Invalid payload for update_devices:", msg.payload);
         }
         break;
 
-      case "remove_device":
-        if (msg.payload && msg.payload.mac) {
-          // removeDevice(msg.payload.mac);
-        } else {
-          console.error("Invalid payload for remove_device:", msg.payload);
-        }
+      case "device_info":
+        console.log(msg);
+        deviceInfo = msg;
+        updateDeviceInfo(deviceInfo);
         break;
 
       case "update_config":
